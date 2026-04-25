@@ -110,13 +110,16 @@ class TestcontainersConfig {
     @Bean
     GenericContainer<?> authService(Network network, PostgreSQLContainer<?> postgres) {
         return springService("auth-service/auth-service", resolveTag(tags.getAuthService()), network)
+                .withNetworkAliases("auth-service")
                 .withEnv("TELEGRAM_BOT_TOKEN", telegramBotToken)
+                .withEnv("VALIDATE_TELEGRAM_INITDATA_TIMESTAMP", "false")
                 .dependsOn(postgres);
     }
 
     @Bean
     GenericContainer<?> dataImporter(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("data-importer/data-importer", resolveTag(tags.getDataImporter()), network)
+                .withNetworkAliases("data-importer")
                 .withEnv("GOOGLE_APPLICATION_CREDENTIALS_JSON", googleCredentialsJson)
                 .dependsOn(postgres, kafka);
     }
@@ -124,18 +127,21 @@ class TestcontainersConfig {
     @Bean
     GenericContainer<?> profileService(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("profile-service/profile-service", resolveTag(tags.getProfileService()), network)
+                .withNetworkAliases("profile-service")
                 .dependsOn(postgres, kafka);
     }
 
     @Bean
     GenericContainer<?> projectService(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("project-service/project-service", resolveTag(tags.getProjectService()), network)
+                .withNetworkAliases("project-service")
                 .dependsOn(postgres, kafka);
     }
 
     @Bean
     GenericContainer<?> mentorService(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("mentor-service/mentor-service", resolveTag(tags.getMentorService()), network)
+                .withNetworkAliases("mentor-service")
                 .dependsOn(postgres, kafka);
     }
 
@@ -143,6 +149,7 @@ class TestcontainersConfig {
     GenericContainer<?> jobMarketAnalytics(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("job-market-analytics-service/job-market-analytics-service",
                 resolveTag(tags.getJobMarketAnalyticsService()), network)
+                .withNetworkAliases("job-market-analytics-service")
                 .withEnv("HH_APP_ACCESS_TOKEN", hhAppAccessToken)
                 .withEnv("HH_APP_EMAIL", hhAppEmail)
                 .dependsOn(postgres, kafka);
