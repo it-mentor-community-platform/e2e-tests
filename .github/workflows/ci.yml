@@ -6,6 +6,7 @@ on:
       - "**"
   repository_dispatch:
     types: [run-e2e-tests]
+  workflow_dispatch:
 
 
 permissions:
@@ -46,6 +47,14 @@ jobs:
 
       - name: Run E2E tests
         env:
+          GATEWAY_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.gateway_tag || 'dev' }}
+          AUTH_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.auth_service_tag || 'dev' }}
+          DATA_IMPORTER_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.data_importer_tag || 'dev' }}
+          PROFILE_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.profile_service_tag || 'dev' }}
+          PROJECT_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.project_service_tag || 'dev' }}
+          MENTOR_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.mentor_service_tag || 'dev' }}
+          JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.job_market_analytics_service_tag || 'dev' }}
+
           TESTCONTAINER_DOCKER_IMAGES_TAG: dev
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
