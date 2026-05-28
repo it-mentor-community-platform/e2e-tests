@@ -54,6 +54,7 @@ jobs:
           PROJECT_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.project_service_tag || 'dev' }}
           MENTOR_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.mentor_service_tag || 'dev' }}
           JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.job_market_analytics_service_tag || 'dev' }}
+          TELEGRAM_BOT_ADAPTER_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.telegram_bot_adapter_tag || 'dev' }}
 
           TESTCONTAINER_DOCKER_IMAGES_TAG: dev
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

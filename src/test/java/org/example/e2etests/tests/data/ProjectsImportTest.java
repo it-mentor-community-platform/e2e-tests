@@ -34,9 +34,11 @@ public class ProjectsImportTest extends E2eTestBase {
     void setUp() {
         jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE telegram_bot_adapter.telegram_bot_tasks RESTART IDENTITY CASCADE");
 
         assertTableIsEmpty("project_service.projects");
         assertTableIsEmpty("profile_service.project");
+        assertTableIsEmpty("telegram_bot_adapter.telegram_bot_tasks");
         kafkaConsumer.seekToEnd(kafkaConsumer.assignment());
         assertKafkaTopicEmpty("projects.project.created");
     }
@@ -45,6 +47,7 @@ public class ProjectsImportTest extends E2eTestBase {
     void clearTable() {
         jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE telegram_bot_adapter.telegram_bot_tasks RESTART IDENTITY CASCADE");
 
     }
 
@@ -115,6 +118,41 @@ public class ProjectsImportTest extends E2eTestBase {
                     assertTableHasRecords("project_service.projects");
                     assertTableHasRecords("profile_service.project");
                 });
+    }
+
+    @Test
+    void shouldCreateTelegramBotTaskWhenProjectCreatedNotFromTelegramBot() {
+        CreateProjectRequest requestBody = CreateProjectRequest.builder()
+                .githubRepositoryUrl("https://github.com/zhukovsd/telegram-bot-task-test")
+                .programmingLanguage("Java")
+                .roadmapProject("CURRENCY-EXCHANGE")
+                .build();
+
+        startImport("/api/project/project", requestBody);
+
+        await().atMost(20, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        assertTableHasRecords("telegram_bot_adapter.telegram_bot_tasks")
+                );
+    }
+
+    @Test
+    void shouldNotCreateTelegramBotTaskWhenProjectCreatedFromTelegramBot() {
+        CreateProjectRequest requestBody = CreateProjectRequest.builder()
+                .authorTelegramUserId(123456789L)
+                .authorTelegramUsername("zhukovsd")
+                .githubRepositoryUrl("https://github.com/zhukovsd/telegram-bot-task-test-from-tg-bot")
+                .programmingLanguage("Java")
+                .roadmapProject("CURRENCY-EXCHANGE")
+                .projectSourceType("TELEGRAM_BOT")
+                .build();
+
+        startImport("/api/project/internal/project", requestBody);
+
+        await().atMost(20, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        assertTableIsEmpty("telegram_bot_adapter.telegram_bot_tasks")
+                );
     }
 
     private void assertKafkaTopicEmpty(String topic) {

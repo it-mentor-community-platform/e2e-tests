@@ -22,5 +22,6 @@ class SmokeTest extends E2eTestBase {
         assertThat(projectService.isRunning()).as("project-service").isTrue();
         assertThat(mentorService.isRunning()).as("mentor-service").isTrue();
         assertThat(jobMarketAnalytics.isRunning()).as("job-market-analytics-service").isTrue();
+        assertThat(telegramBotAdapter.isRunning()).as("telegram-bot-adapter").isTrue();
     }
 }
