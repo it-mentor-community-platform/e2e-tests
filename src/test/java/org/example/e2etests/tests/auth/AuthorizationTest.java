@@ -30,7 +30,7 @@ class AuthorizationTest extends E2eTestBase {
 
     @AfterEach
     void cleanTestData() {
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles, auth_service.users RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles, auth_service.users, mentor_service.mentors RESTART IDENTITY CASCADE");
     }
 
     @Test
@@ -109,6 +109,34 @@ class AuthorizationTest extends E2eTestBase {
         assertThat(users).hasSize(1);
     }
 
+        @Test
+        void shouldUpdateMentorTelegramUrlFromAuthenticatedUserTelegramUsername() {
+            String firstToken = authenticateViaTelegram(telegramInitData);
+            Claims firstClaims = parseJwt(firstToken);
+            Long telegramUserId = extractTelegramUserIdFrom(firstClaims);
+
+            upsertInternalUser(telegramUserId, List.of("MENTOR"));
+            insertMentor(telegramUserId, "https://t.me/old_username");
+
+            authenticateViaTelegram(updatedTelegramInitData);
+
+            Awaitility.await()
+                    .atMost(AWAIT_TIMEOUT)
+                    .pollInterval(AWAIT_POLL_INTERVAL)
+                    .ignoreExceptions()
+                    .untilAsserted(() -> {
+                        Map<String, Object> mentor = jdbcTemplate.queryForMap(
+                                "SELECT * FROM mentor_service.mentors WHERE mentor_telegram_user_id = ?",
+                                telegramUserId
+                        );
+
+                        assertThat(mentor)
+                                .containsEntry("mentor_telegram_user_id", telegramUserId)
+                                .containsEntry("telegram_url", "https://t.me/yeahigh")
+                                .containsEntry("is_active", true);
+                    });
+        }
+
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.TEXT_PLAIN);
@@ -179,4 +207,30 @@ class AuthorizationTest extends E2eTestBase {
         assertThat(records.count()).isGreaterThan(0);
     }
 
+    private void upsertInternalUser(Long telegramUserId, List<String> roles) {
+        int port = authService.getMappedPort(8080);
+        String host = authService.getHost();
+
+        Map<String, Object> requestBody = Map.of(
+                "telegram_user_id", telegramUserId,
+                "roles", roles
+        );
+
+        testRestTemplate.postForEntity(
+                "http://" + host + ":" + port + "/api/auth/internal/user",
+                new HttpEntity<>(requestBody),
+                String.class
+        );
+    }
+
+    private void insertMentor(Long telegramUserId, String telegramUrl) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO mentor_service.mentors (mentor_telegram_user_id, telegram_url, is_active)
+                VALUES (?, ?, true)
+                """,
+                telegramUserId,
+                telegramUrl
+        );
+    }
 }
