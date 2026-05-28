@@ -15,4 +15,5 @@ class DockerImageTagsProperties {
     private String projectService;
     private String mentorService;
     private String jobMarketAnalyticsService;
+    private String telegramBotAdapter;
 }

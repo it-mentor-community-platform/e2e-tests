@@ -53,6 +53,8 @@ public abstract class E2eTestBase {
     @Autowired
     protected GenericContainer<?> jobMarketAnalytics;
     @Autowired
+    protected GenericContainer<?> telegramBotAdapter;
+    @Autowired
     protected TestRestTemplate testRestTemplate;
 
     protected SecretKey secretKey() {

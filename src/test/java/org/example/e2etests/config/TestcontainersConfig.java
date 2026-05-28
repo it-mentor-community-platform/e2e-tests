@@ -198,6 +198,13 @@ public class TestcontainersConfig {
                 .dependsOn(postgres, kafka);
     }
 
+    @Bean
+    GenericContainer<?> telegramBotAdapter(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
+        return springService("telegram-bot-adapter/telegram-bot-adapter", resolveTag(tags.getTelegramBotAdapter()), network)
+                .withNetworkAliases("telegram-bot-adapter")
+                .dependsOn(postgres, kafka);
+    }
+
     private String resolveTag(String serviceTag) {
         return Optional.ofNullable(serviceTag)
                 .filter(t -> !t.isBlank())
