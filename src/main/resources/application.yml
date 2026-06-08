@@ -36,3 +36,8 @@ jwt:
 telegram:
   init-data: user=%7B%22id%22%3A531455701%2C%22first_name%22%3A%22%D0%9C%D0%B0%D1%80%D0%BA%22%2C%22last_name%22%3A%22%22%2C%22username%22%3A%22yeahigh%22%2C%22language_code%22%3A%22ru%22%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2FjeCwwKkabH7uU8K6ALqVFhodLV3KS-AXrt6vvm4okKc.svg%22%7D&chat_instance=-7061379911278325128&chat_type=supergroup&auth_date=1777060225&signature=uxESH6NQkg1q-otcmLaqjGJUF3tyKsYK3Sh98C2XpBBC2aZN3f-tJPfp8rV1OU0rj2VJYTgKBmjCX7IOcrpUBg&hash=2f1c5fb7b9cf74f1fcafbda3c800efb76ffb1117ea1358b4692e304806f5be6c
   updated-init-data: user=%7B%22id%22%3A531455701%2C%22first_name%22%3A%22%D0%9C%D0%B0%D1%80%D0%BA%22%2C%22last_name%22%3A%22%D0%A0%22%2C%22username%22%3A%22yeahigh%22%2C%22language_code%22%3A%22ru%22%2C%22photo_url%22%3A%22https%3A%5C%2F%5C%2Ft.me%5C%2Fi%5C%2Fuserpic%5C%2F320%5C%2FjeCwwKkabH7uU8K6ALqVFhodLV3KS-AXrt6vvm4okKc.svg%22%7D&chat_instance=3294457520524516638&chat_type=sender&auth_date=1777148749&signature=BLr0rSsq6Y-a-i5u2NxaWqIYohC_Mq6b4-15uYVS_w0Dztx_X7U4b2kdTcEuR5iRPb5YA3gYsDDpFkEVesboBw&hash=1bb1025a2e4cff2acfe37cf2e9648c81095659c9e760edeb7004cfa5a3bc9227
+
+telegram-bot-adapter:
+  auth:
+    username: ${TELEGRAM_ADAPTER_USERNAME:username}
+    password: ${TELEGRAM_ADAPTER_PASSWORD:password}
