@@ -5,7 +5,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.example.e2etests.tests.base.E2eTestBase;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
 import org.springframework.test.jdbc.JdbcTestUtils;
@@ -22,7 +22,7 @@ import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
 @Slf4j
 public class DataImporterE2eTest extends E2eTestBase {
 
-    @AfterEach
+    @BeforeEach
     void setUp() {
         jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
