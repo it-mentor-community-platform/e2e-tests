@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.crypto.SecretKey;
 import java.util.Base64;
@@ -20,6 +21,20 @@ import java.util.Base64;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
 public abstract class E2eTestBase {
+    protected static final String AUTH_SERVICE_USERS_TABLE = "auth_service.users";
+    protected static final String AUTH_SERVICE_USERS_ROLES_TABLE = "auth_service.users";
+    protected static final String PROJECT_SERVICE_PROJECTS_TABLE = "project_service.projects";
+    protected static final String PROFILE_SERVICE_PROFILES_TABLE = "profile_service.profiles";
+    protected static final String PROFILE_SERVICE_PROJECT_TABLE = "profile_service.project";
+    protected static final String MENTOR_SERVICE_MENTORS_TABLE = "mentor_service.mentors";
+    protected static final String MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE = "mentor_service.guaranteed_reviews_prices";
+    protected static final String BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE = "telegram_bot_adapter.telegram_bot_tasks";
+    protected static final String PROJECTS_PROJECT_CREATED_TOPIC = "projects.project.created";
+    protected static final String NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC = "notifications.mentors.project.submitted";
+    protected static final String AUTH_ENDPOINT = "/api/auth/by-telegram";
+    protected static final String PROJECT_FRONTEND_ENDPOINT = "/api/project/project";
+    protected static final String BOT_TASKS_ENDPOINT_COUNT_10 = "/api/telegram-bot-adapter/tasks?count=10";
+
     @Value("${jwt.secret}")
     protected String jwtSecret;
     @Value("${telegram.init-data}")
@@ -28,6 +43,10 @@ public abstract class E2eTestBase {
     protected String updatedTelegramInitData;
     @Value("${GOOGLE_TEST_SPREADSHEET_ID}")
     protected String testSpreadsheetId;
+    @Value("${telegram-bot-adapter.auth.username}")
+    protected String botUsername;
+    @Value("${telegram-bot-adapter.auth.password}")
+    protected String botPassword;
     @Autowired
     protected GoogleSheetsClient googleSheetsHelper;
     @Autowired
@@ -56,6 +75,8 @@ public abstract class E2eTestBase {
     protected GenericContainer<?> telegramBotAdapter;
     @Autowired
     protected TestRestTemplate testRestTemplate;
+    @Autowired
+    protected ObjectMapper objectMapper;
 
     protected SecretKey secretKey() {
         return Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));

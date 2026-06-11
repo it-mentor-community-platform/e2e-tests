@@ -21,6 +21,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -41,7 +42,8 @@ public class TestcontainersConfig {
     private static final List<String> REQUIRED_TOPICS = List.of(
             "auth.user.created",
             "auth.user.authenticated",
-            "projects.project.created"
+            "projects.project.created",
+            "notifications.mentors.project.submitted"
     );
 
     @Value("${jwt.secret}")
@@ -221,6 +223,7 @@ public class TestcontainersConfig {
         String serviceName = imagePath.substring(imagePath.lastIndexOf('/') + 1);
         return new GenericContainer<>(GHCR + "/" + imagePath + ":" + tag)
                 .withNetwork(network)
+                .withImagePullPolicy(PullPolicy.alwaysPull())
                 .withEnv("SPRING_PROFILES_ACTIVE", "local-stack")
                 .withEnv("SPRING_KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
                 .withExposedPorts(8080)

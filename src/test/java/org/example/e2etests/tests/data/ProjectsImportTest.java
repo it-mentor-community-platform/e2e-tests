@@ -149,9 +149,10 @@ public class ProjectsImportTest extends E2eTestBase {
 
         startImport("/api/project/internal/project", requestBody);
 
+        String clause = "task_type='%s'".formatted(PROJECTS_PROJECT_CREATED_TOPIC);
         await().atMost(20, TimeUnit.SECONDS)
                 .untilAsserted(() ->
-                        assertTableIsEmpty("telegram_bot_adapter.telegram_bot_tasks")
+                        assertTableIsEmpty("telegram_bot_adapter.telegram_bot_tasks", clause)
                 );
     }
 
@@ -168,6 +169,11 @@ public class ProjectsImportTest extends E2eTestBase {
 
     private void assertTableIsEmpty(String tableName) {
         int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
+        assertThat(count).isZero();
+    }
+
+    private void assertTableIsEmpty(String tableName, String clause) {
+        int count = JdbcTestUtils.countRowsInTableWhere(jdbcTemplate, tableName, clause);
         assertThat(count).isZero();
     }
 
