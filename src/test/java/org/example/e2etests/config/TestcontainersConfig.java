@@ -43,7 +43,8 @@ public class TestcontainersConfig {
             "auth.user.created",
             "auth.user.authenticated",
             "projects.project.created",
-            "notifications.mentors.project.submitted"
+            "notifications.mentors.project.submitted",
+            "notifications.students.review.submitted"
     );
 
     @Value("${jwt.secret}")
