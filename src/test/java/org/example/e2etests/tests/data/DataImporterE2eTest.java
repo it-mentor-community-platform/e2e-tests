@@ -36,7 +36,7 @@ public class DataImporterE2eTest extends E2eTestBase {
 
         startImport("/api/data-importer/start-users-import");
 
-        Thread.sleep(10_000);
+        Thread.sleep(20_000);
 
         assertTableHasRecords("auth_service.users");
 

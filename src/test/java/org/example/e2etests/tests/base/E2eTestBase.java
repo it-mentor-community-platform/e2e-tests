@@ -34,6 +34,8 @@ public abstract class E2eTestBase {
     protected static final String AUTH_ENDPOINT = "/api/auth/by-telegram";
     protected static final String PROJECT_FRONTEND_ENDPOINT = "/api/project/project";
     protected static final String BOT_TASKS_ENDPOINT_COUNT_10 = "/api/telegram-bot-adapter/tasks?count=10";
+    protected static final String PROJECT_REVIEW_FRONTEND_ENDPOINT = "/api/project/review";
+    protected static final String NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC = "notifications.students.review.submitted";
 
     @Value("${jwt.secret}")
     protected String jwtSecret;
