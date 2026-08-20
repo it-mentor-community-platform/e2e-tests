@@ -41,3 +41,15 @@ telegram-bot-adapter:
   auth:
     username: ${TELEGRAM_ADAPTER_USERNAME:username}
     password: ${TELEGRAM_ADAPTER_PASSWORD:password}
+
+secrets:
+  testcontainer-tag: ${TESTCONTAINER_DOCKER_IMAGES_TAG:dev}
+  tg-token: ${TELEGRAM_BOT_TOKEN}
+  hh:
+    access-token: ${HH_APP_ACCESS_TOKEN}
+    email: ${HH_APP_EMAIL}
+  google:
+    credentials-json: ${GOOGLE_APPLICATION_CREDENTIALS_JSON}
+    spreadsheet:
+      source-id: ${GOOGLE_SOURCE_SPREADSHEET_ID}
+      test-id: ${GOOGLE_TEST_SPREADSHEET_ID}
