@@ -24,11 +24,14 @@ import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
 @Slf4j
 public class DataImporterE2eTest extends E2eTestBase {
 
-    protected static final String API_PROFILES_IMPORT = "/api/data-importer/start-profiles-import";
-    protected static final String API_PROJECTS_IMPORT = "/api/data-importer/start-projects-import";
-    protected static final String API_USERS_IMPORT = "/api/data-importer/start-users-import";
-    protected static final String API_MENTORS_IMPORT = "/api/data-importer/start-mentors-import";
-    protected static final String API_GUARANTEED_REVIEWS_IMPORT = "/api/data-importer/start-guaranteed-reviews-import";
+    private static final String API_PROFILES_IMPORT = "/api/data-importer/start-profiles-import";
+    private static final String API_PROJECTS_IMPORT = "/api/data-importer/start-projects-import";
+    private static final String API_USERS_IMPORT = "/api/data-importer/start-users-import";
+    private static final String API_MENTORS_IMPORT = "/api/data-importer/start-mentors-import";
+    private static final String API_GUARANTEED_REVIEWS_IMPORT = "/api/data-importer/start-guaranteed-reviews-import";
+
+    private static final String UPDATE_DESCRIPTION_MENTOR_SQL = "UPDATE " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " SET cost = ? WHERE name = ?";
+    private static final String GET_DESCRIPTION_MENTOR_SQL = "SELECT cost FROM " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " WHERE name = ?";
 
 
     @BeforeEach
@@ -124,9 +127,8 @@ public class DataImporterE2eTest extends E2eTestBase {
         });
     }
 
-
     @Test
-    void shouldRefreshConditionMentor() {
+    void shouldNotOverwriteMentorDescription() {
         assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
         assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
 
@@ -148,6 +150,25 @@ public class DataImporterE2eTest extends E2eTestBase {
                     assertTableHasRecords(MENTOR_SERVICE_SERVICES_TABLE);
                 }
         );
+
+        String description = "Бесплатно всем";
+        String testName = "Артём";
+        jdbcTemplate.update(
+                UPDATE_DESCRIPTION_MENTOR_SQL,
+                description, testName
+        );
+
+        startImport(API_MENTORS_IMPORT);
+        executeWithAwait(30, () ->
+                assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE)
+        );
+
+        String descriptionAfter = jdbcTemplate.queryForObject(
+                GET_DESCRIPTION_MENTOR_SQL,
+                String.class, testName
+        );
+
+        assertThat(descriptionAfter).isEqualTo(description);
 
     }
 
