@@ -151,6 +151,12 @@ public class DataImporterE2eTest extends E2eTestBase {
                 }
         );
 
+        try {
+            Thread.sleep(5_000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
         String description = "Бесплатно всем";
         String testName = "Артём";
         jdbcTemplate.update(
