@@ -43,7 +43,7 @@ telegram-bot-adapter:
     password: ${TELEGRAM_ADAPTER_PASSWORD:password}
 
 secrets:
-  testcontainer-tag: ${TESTCONTAINER_DOCKER_IMAGES_TAG:dev}
+  testcontainer-tag: ${TESTCONTAINER_DOCKER_IMAGES_TAG}
   tg-token: ${TELEGRAM_BOT_TOKEN}
   hh:
     access-token: ${HH_APP_ACCESS_TOKEN}

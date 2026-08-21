@@ -4,6 +4,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.awaitility.core.ThrowingRunnable;
 import org.example.e2etests.tests.base.E2eTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,10 +18,18 @@ import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
 
 @Slf4j
 public class DataImporterE2eTest extends E2eTestBase {
+
+    protected static final String API_PROFILES_IMPORT = "/api/data-importer/start-profiles-import";
+    protected static final String API_PROJECTS_IMPORT = "/api/data-importer/start-projects-import";
+    protected static final String API_USERS_IMPORT = "/api/data-importer/start-users-import";
+    protected static final String API_MENTORS_IMPORT = "/api/data-importer/start-mentors-import";
+    protected static final String API_GUARANTEED_REVIEWS_IMPORT = "/api/data-importer/start-guaranteed-reviews-import";
+
 
     @BeforeEach
     void setUp() {
@@ -32,67 +41,123 @@ public class DataImporterE2eTest extends E2eTestBase {
     }
 
     @Test
-    void shouldImportUsersAndSendMessagesToKafka() throws InterruptedException {
-        assertTableIsEmpty("auth_service.users");
-        kafkaConsumer.subscribe(List.of("auth.user.created"));
+    void shouldImportUsersAndSendMessagesToKafka() {
+        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
+        kafkaConsumer.subscribe(List.of(AUTH_USER_CREATED_TOPIC));
 
-        startImport("/api/data-importer/start-users-import");
+        startImport(API_USERS_IMPORT);
 
-        Thread.sleep(20_000);
+        executeWithAwait(60, () -> {
+                    assertTableHasRecords(AUTH_SERVICE_USERS_TABLE);
+                    assertTableHasRecords(AUTH_SERVICE_USERS_ROLES_TABLE);
+                }
+        );
 
-        assertTableHasRecords("auth_service.users");
-
-        ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(5));
-        assertThat(records.count()).isGreaterThan(0);
-        assertThat(records.iterator().next().value()).contains("telegram_user_id");
+        executeWithAwait(60, () -> {
+            ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(1));
+            assertThat(records.count()).isGreaterThan(0);
+            assertThat(records.iterator().next().value()).contains("telegram_user_id");
+        });
     }
 
     @Test
-    void shouldImportProfilesAndProjects() throws InterruptedException {
-        assertTableIsEmpty("profile_service.profiles");
+    void shouldImportProfilesAndProjects() {
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
 
-        startImport("/api/data-importer/start-profiles-import");
+        startImport(API_PROFILES_IMPORT);
 
-        Thread.sleep(10_000);
+        executeWithAwait(60, () ->
+                assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE)
+        );
 
-        assertTableHasRecords("profile_service.profiles");
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+        kafkaConsumer.subscribe(List.of(PROJECTS_PROJECT_CREATED_TOPIC));
+        startImport(API_PROJECTS_IMPORT);
 
-        assertTableIsEmpty("project_service.projects");
-        kafkaConsumer.subscribe(List.of("projects.project.created"));
-        startImport("/api/data-importer/start-projects-import");
+        executeWithAwait(60, () ->
+                assertTableHasRecords(PROJECT_SERVICE_PROJECTS_TABLE)
+        );
 
-        Thread.sleep(10_000);
-
-        assertTableHasRecords("project_service.projects");
-
-        ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(5));
-        assertThat(records.count()).isGreaterThan(0);
-        assertThat(records.iterator().next().value()).contains("author_telegram_user_id");
+        executeWithAwait(60, () -> {
+            ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(1));
+            assertThat(records.count()).isGreaterThan(0);
+            assertThat(records.iterator().next().value()).contains("author_telegram_user_id");
+        });
     }
 
     @Test
-    void shouldImportMentorsAndReviewPricesAndSendMessagesToKafka() throws InterruptedException {
-        assertTableIsEmpty("mentor_service.mentors");
-        assertTableIsEmpty("mentor_service.guaranteed_reviews_prices");
+    void shouldImportMentorsAndReviewPricesAndSendMessagesToKafka() {
+        assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
 
-        kafkaConsumer.subscribe(List.of("auth.user.created"));
+        kafkaConsumer.subscribe(List.of(NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC));
 
-        startImport("/api/data-importer/start-users-import");
-        Thread.sleep(20_000);
+        startImport(API_PROFILES_IMPORT);
+        executeWithAwait(60,
+                () -> {
+                    assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE);
+                    assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE);
+                }
+        );
 
-        startImport("/api/data-importer/start-profiles-import");
-        Thread.sleep(10_000);
+        startImport(API_MENTORS_IMPORT);
+        executeWithAwait(200, () -> {
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_PROGRAMMING_LANGUAGES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_PROGRAMMING_LANGUAGES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_SERVICES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_SERVICES_TABLE);
+                }
+        );
 
-        startImport("/api/data-importer/start-guaranteed-reviews-import");
+        startImport(API_GUARANTEED_REVIEWS_IMPORT);
+        executeWithAwait(60, () ->
+                assertTableHasRecords(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE)
+        );
 
-        Thread.sleep(10_000);
 
-        assertTableHasRecords("mentor_service.mentors");
-        assertTableHasRecords("mentor_service.guaranteed_reviews_prices");
+        executeWithAwait(60, () -> {
+            ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(1));
+            assertThat(records.count()).isGreaterThan(0);
+            assertThat(records.iterator().next().value()).contains("author_telegram_user_id");
+        });
+    }
 
-        ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(5));
-        assertThat(records.count()).isGreaterThan(0);
-        assertThat(records.iterator().next().value()).contains("telegram_user_id");
+
+    @Test
+    void shouldRefreshConditionMentor() {
+        assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
+
+        startImport(API_PROFILES_IMPORT);
+        executeWithAwait(60,
+                () -> {
+                    assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE);
+                    assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE);
+                }
+        );
+
+        startImport(API_MENTORS_IMPORT);
+        executeWithAwait(200, () -> {
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_PROGRAMMING_LANGUAGES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_PROGRAMMING_LANGUAGES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_MENTORS_SERVICES_TABLE);
+                    assertTableHasRecords(MENTOR_SERVICE_SERVICES_TABLE);
+                }
+        );
+
+    }
+
+
+    private void executeWithAwait(int second, ThrowingRunnable throwingRunnable) {
+
+        await()
+                .atMost(Duration.ofSeconds(second))
+                .pollInterval(Duration.ofSeconds(3))
+                .untilAsserted(throwingRunnable);
     }
 
     private void assertTableIsEmpty(String tableName) {
