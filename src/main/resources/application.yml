@@ -22,13 +22,13 @@ spring:
 docker:
   image:
     tags:
-      gateway: ${GATEWAY_DOCKER_IMAGE_TAG:}
-      auth-service: ${AUTH_SERVICE_DOCKER_IMAGE_TAG:}
-      data-importer: ${DATA_IMPORTER_DOCKER_IMAGE_TAG:}
-      profile-service: ${PROFILE_SERVICE_DOCKER_IMAGE_TAG:}
-      project-service: ${PROJECT_SERVICE_DOCKER_IMAGE_TAG:}
-      mentor-service: ${MENTOR_SERVICE_DOCKER_IMAGE_TAG:}
-      job-market-analytics-service: ${JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG:}
+      gateway: ${GATEWAY_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      auth-service: ${AUTH_SERVICE_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      data-importer: ${DATA_IMPORTER_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      profile-service: ${PROFILE_SERVICE_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      project-service: ${PROJECT_SERVICE_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      mentor-service: ${MENTOR_SERVICE_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
+      job-market-analytics-service: ${JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG:${TESTCONTAINER_DOCKER_IMAGES_TAG}}
 
 jwt:
   secret: 632eca39fc29068edc74133ca9cf8f40b4942191f80c0c78dd588835beb5f57b
@@ -41,3 +41,15 @@ telegram-bot-adapter:
   auth:
     username: ${TELEGRAM_ADAPTER_USERNAME:username}
     password: ${TELEGRAM_ADAPTER_PASSWORD:password}
+
+secrets:
+  testcontainer-tag: ${TESTCONTAINER_DOCKER_IMAGES_TAG}
+  tg-token: ${TELEGRAM_BOT_TOKEN}
+  hh:
+    access-token: ${HH_APP_ACCESS_TOKEN}
+    email: ${HH_APP_EMAIL}
+  google:
+    credentials-json: ${GOOGLE_APPLICATION_CREDENTIALS_JSON}
+    spreadsheet:
+      source-id: ${GOOGLE_SOURCE_SPREADSHEET_ID}
+      test-id: ${GOOGLE_TEST_SPREADSHEET_ID}

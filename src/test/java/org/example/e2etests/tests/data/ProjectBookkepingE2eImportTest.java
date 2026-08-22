@@ -27,7 +27,7 @@ import static org.awaitility.Awaitility.await;
 import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
 
 @Slf4j
-public class ProjectsImportTest extends E2eTestBase {
+public class ProjectBookkepingE2eImportTest extends E2eTestBase {
 
 
     @BeforeEach

@@ -1,5 +1,6 @@
 package org.example.e2etests.tests.base;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.security.Keys;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.example.e2etests.config.GoogleSheetsClient;
@@ -13,7 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.crypto.SecretKey;
 import java.util.Base64;
@@ -22,13 +22,20 @@ import java.util.Base64;
 @Import(TestcontainersConfig.class)
 public abstract class E2eTestBase {
     protected static final String AUTH_SERVICE_USERS_TABLE = "auth_service.users";
-    protected static final String AUTH_SERVICE_USERS_ROLES_TABLE = "auth_service.users";
+    protected static final String AUTH_SERVICE_USERS_ROLES_TABLE = "auth_service.roles";
     protected static final String PROJECT_SERVICE_PROJECTS_TABLE = "project_service.projects";
     protected static final String PROFILE_SERVICE_PROFILES_TABLE = "profile_service.profiles";
     protected static final String PROFILE_SERVICE_PROJECT_TABLE = "profile_service.project";
     protected static final String MENTOR_SERVICE_MENTORS_TABLE = "mentor_service.mentors";
     protected static final String MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE = "mentor_service.guaranteed_reviews_prices";
+    protected static final String MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE = "mentor_service.mentor_descriptions";
+    protected static final String MENTOR_SERVICE_MENTORS_PROGRAMMING_LANGUAGES_TABLE = "mentor_service.mentors_programming_languages";
+    protected static final String MENTOR_SERVICE_PROGRAMMING_LANGUAGES_TABLE = "mentor_service.programming_languages";
+    protected static final String MENTOR_SERVICE_MENTORS_SERVICES_TABLE = "mentor_service.mentors_services";
+    protected static final String MENTOR_SERVICE_SERVICES_TABLE = "mentor_service.services";
+
     protected static final String BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE = "telegram_bot_adapter.telegram_bot_tasks";
+    protected static final String AUTH_USER_CREATED_TOPIC = "auth.user.created";
     protected static final String PROJECTS_PROJECT_CREATED_TOPIC = "projects.project.created";
     protected static final String NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC = "notifications.mentors.project.submitted";
     protected static final String AUTH_ENDPOINT = "/api/auth/by-telegram";

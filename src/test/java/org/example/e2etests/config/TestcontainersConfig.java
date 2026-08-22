@@ -50,31 +50,31 @@ public class TestcontainersConfig {
     @Value("${jwt.secret}")
     String jwtSecret;
 
-    @Value("${TESTCONTAINER_DOCKER_IMAGES_TAG}")
+    @Value("${secrets.testcontainer-tag}")
     private String defaultDockerImageTag;
 
     @Autowired
     private DockerImageTagsProperties tags;
 
-    @Value("${TELEGRAM_BOT_TOKEN}")
+    @Value("${secrets.tg-token}")
     private String telegramBotToken;
 
-    @Value("${HH_APP_ACCESS_TOKEN}")
+    @Value("${secrets.hh.access-token}")
     private String hhAppAccessToken;
 
-    @Value("${HH_APP_EMAIL}")
+    @Value("${secrets.hh.email}")
     private String hhAppEmail;
 
-    @Value("${GOOGLE_APPLICATION_CREDENTIALS_JSON}")
+    @Value("${secrets.google.credentials-json}")
     private String googleCredentialsJson;
 
 
     private GoogleSheetsClient googleSheetsClient;
 
-    @Value("${GOOGLE_SOURCE_SPREADSHEET_ID}")
+    @Value("${secrets.google.spreadsheet.source-id}")
     private String sourceSpreadsheetId;
 
-    @Value("${GOOGLE_TEST_SPREADSHEET_ID}")
+    @Value("${secrets.google.spreadsheet.test-id}")
     private String testSpreadsheetId;
 
     @Bean
