@@ -12,7 +12,6 @@ import org.example.e2etests.tests.base.E2eTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
 import java.io.IOException;
@@ -27,7 +26,6 @@ import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     private static final String GITHUB_REPOSITORY_URL = "https://github.com/zhukovsd/currency-exchange-testNotificationMentor";

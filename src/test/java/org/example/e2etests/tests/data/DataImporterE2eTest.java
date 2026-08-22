@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.awaitility.core.ThrowingRunnable;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -42,6 +43,16 @@ public class DataImporterE2eTest extends E2eTestBase {
         jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
         jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
     }
+
+    @AfterEach
+    void cleanTables() {
+        jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
+    }
+
 
     @Test
     void shouldImportUsersAndSendMessagesToKafka() {
