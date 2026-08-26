@@ -34,7 +34,6 @@ public class DataImporterE2eTest extends E2eTestBase {
     private static final String UPDATE_DESCRIPTION_MENTOR_SQL = "UPDATE " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " SET cost = ? WHERE name = ?";
     private static final String GET_DESCRIPTION_MENTOR_SQL = "SELECT cost FROM " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " WHERE name = ?";
 
-
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
@@ -61,17 +60,8 @@ public class DataImporterE2eTest extends E2eTestBase {
 
         startImport(API_USERS_IMPORT);
 
-        executeWithAwait(60, () -> {
-                    assertTableHasRecords(AUTH_SERVICE_USERS_TABLE);
-                    assertTableHasRecords(AUTH_SERVICE_USERS_ROLES_TABLE);
-                }
-        );
-
-        executeWithAwait(60, () -> {
-            ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(1));
-            assertThat(records.count()).isGreaterThan(0);
-            assertThat(records.iterator().next().value()).contains("telegram_user_id");
-        });
+        awaitUsersImported();
+        assertAuthUserCreatedPublished();
     }
 
     @Test
@@ -100,16 +90,14 @@ public class DataImporterE2eTest extends E2eTestBase {
     }
 
     @Test
-    void shouldImportMentorsAndReviewPricesAndSendMessagesToKafka() {
+    void shouldImportMentorsAndSendMessagesToKafka() {
         assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
-        assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
 
         kafkaConsumer.subscribe(List.of(NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC));
 
         startImport(API_PROFILES_IMPORT);
         executeWithAwait(60,
                 () -> {
-                    assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE);
                     assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE);
                 }
         );
@@ -125,17 +113,41 @@ public class DataImporterE2eTest extends E2eTestBase {
                 }
         );
 
-        startImport(API_GUARANTEED_REVIEWS_IMPORT);
-        executeWithAwait(60, () ->
-                assertTableHasRecords(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE)
-        );
-
+        startImport(API_PROJECTS_IMPORT);
+        executeWithAwait(60, () -> {
+            assertTableHasRecords(PROJECT_SERVICE_PROJECTS_TABLE);
+            assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE);
+        });
 
         executeWithAwait(60, () -> {
             ConsumerRecords<String, String> records = kafkaConsumer.poll(Duration.ofSeconds(1));
             assertThat(records.count()).isGreaterThan(0);
             assertThat(records.iterator().next().value()).contains("author_telegram_user_id");
         });
+    }
+
+    @Test
+    void shouldImportGuaranteedReviews() {
+        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
+
+        kafkaConsumer.subscribe(List.of(AUTH_USER_CREATED_TOPIC));
+
+        startImport(API_USERS_IMPORT);
+        awaitUsersImported();
+        assertAuthUserCreatedPublished();
+
+        startImport(API_PROFILES_IMPORT);
+        awaitProfilesImported();
+
+        startImport(API_MENTORS_IMPORT);
+        awaitMentorsImported();
+        assertAllMentorsHaveProfiles();
+
+        startImport(API_GUARANTEED_REVIEWS_IMPORT);
+        awaitGuaranteedReviewsImported();
     }
 
     @Test
@@ -227,5 +239,55 @@ public class DataImporterE2eTest extends E2eTestBase {
                 new HttpEntity<>(createHeaders(createAdminToken())),
                 String.class
         );
+    }
+    private void awaitUsersImported() {
+        executeWithAwait(60, () -> {
+            assertTableHasRecords(AUTH_SERVICE_USERS_TABLE);
+            assertTableHasRecords(AUTH_SERVICE_USERS_ROLES_TABLE);
+        });
+    }
+
+    private void assertAuthUserCreatedPublished() {
+        executeWithAwait(60, () -> {
+            ConsumerRecords<String, String> records =
+                    kafkaConsumer.poll(Duration.ofSeconds(1));
+
+            assertThat(records.count()).isGreaterThan(0);
+            assertThat(records.iterator().next().value())
+                    .contains("telegram_user_id");
+        });
+    }
+    private void awaitProfilesImported() {
+        executeWithAwait(60, () ->
+                assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE)
+        );
+    }
+    private void awaitMentorsImported() {
+        executeWithAwait(120, () ->
+                assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE)
+        );
+    }
+    private void awaitGuaranteedReviewsImported() {
+        executeWithAwait(60, () ->
+                assertTableHasRecords(
+                        MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE
+                )
+        );
+    }
+
+    private void assertAllMentorsHaveProfiles() {
+        executeWithAwait(60, () -> {
+            Integer mentorsWithoutProfiles = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM mentor_service.mentors m
+                LEFT JOIN profile_service.profiles p
+                    ON p.telegram_user_id = m.mentor_telegram_user_id
+                WHERE p.id IS NULL
+                """,
+                    Integer.class
+            );
+
+            assertThat(mentorsWithoutProfiles).isZero();
+        });
     }
 }
