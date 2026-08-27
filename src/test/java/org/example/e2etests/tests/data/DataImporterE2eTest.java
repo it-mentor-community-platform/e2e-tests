@@ -201,7 +201,6 @@ public class DataImporterE2eTest extends E2eTestBase {
 
     }
 
-
     private void executeWithAwait(int second, ThrowingRunnable throwingRunnable) {
 
         await()
