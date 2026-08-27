@@ -43,16 +43,6 @@ public class DataImporterE2eTest extends E2eTestBase {
         jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
     }
 
-    @AfterEach
-    void cleanTables() {
-        jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
-    }
-
-
     @Test
     void shouldImportUsersAndSendMessagesToKafka() {
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
