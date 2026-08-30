@@ -24,6 +24,7 @@ public abstract class E2eTestBase {
     protected static final String AUTH_SERVICE_USERS_TABLE = "auth_service.users";
     protected static final String AUTH_SERVICE_USERS_ROLES_TABLE = "auth_service.roles";
     protected static final String PROJECT_SERVICE_PROJECTS_TABLE = "project_service.projects";
+    protected static final String PROJECT_SERVICE_REVIEWS_TABLE = "project_service.reviews";
     protected static final String PROFILE_SERVICE_PROFILES_TABLE = "profile_service.profiles";
     protected static final String PROFILE_SERVICE_PROJECT_TABLE = "profile_service.project";
     protected static final String MENTOR_SERVICE_MENTORS_TABLE = "mentor_service.mentors";
