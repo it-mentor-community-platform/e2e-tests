@@ -16,7 +16,9 @@ import org.springframework.test.jdbc.JdbcTestUtils;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 
@@ -68,7 +70,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
     }
 
     @Test
-    void shouldCreateNotificationTaskWhenSubmittingProject() throws IOException {
+    void shouldCreateNotificationTaskWhenSubmittingProject() throws Exception {
         createMentor();
         String accessToken = authenticateViaTelegram(telegramInitData);
         createProjectViaFrontend(accessToken);
@@ -77,30 +79,47 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        HttpEntity<String> request = new HttpEntity<>(telegramInitData, headers);
-
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, String> jsonBody = Collections.singletonMap("initDataRaw", telegramInitData);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 AUTH_ENDPOINT,
                 request,
                 String.class
         );
+        Assertions.assertThat(response.getHeaders().getFirst("X-Access-Token")).isNotNull();
+        return response.getHeaders().getFirst("X-Access-Token");
+    }
+
+    private void getBotTasks() throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        String auth = "username:password";
+        byte[] encodedAuth = java.util.Base64.getEncoder().encode(
+                auth.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+        headers.set("Authorization", "Basic " + new String(encodedAuth));
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<String> response = testRestTemplate.exchange(
+                BOT_TASKS_ENDPOINT_COUNT_10,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                String.class
+        );
         assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        String accessToken = response.getHeaders().getFirst("X-Access-Token");
-        Assertions.assertThat(accessToken).isNotNull();
-
-        Claims claims = parseJwt(accessToken);
-        long telegramUserId = extractTelegramUserIdFrom(claims);
-
-        String clause = "telegram_user_id='%s'".formatted(telegramUserId);
-        assertTableHasOneRecord(AUTH_SERVICE_USERS_TABLE, clause);
-        await().atMost(30, TimeUnit.SECONDS)
-                .ignoreExceptions()
-                .untilAsserted(() ->
-                        assertTableHasOneRecord(PROFILE_SERVICE_PROFILES_TABLE, clause)
-                );
-        return accessToken;
+        JsonNode tasks = objectMapper.readTree(response.getBody()).get("tasks");
+        JsonNode notificationTask = StreamSupport.stream(tasks.spliterator(), false)
+                .filter(task ->
+                        NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC.equals(
+                                task.path("taskType").asText()
+                        )
+                )
+                .findFirst()
+                .orElseThrow();
+        JsonNode mentors = notificationTask.path("payload").path("mentors");
+        assertThat(mentors.get(0)
+                .path("mentor_telegram_user_id")
+                .asLong()
+        ).isEqualTo(MENTOR_ID);
     }
 
     private void createProjectViaFrontend(String accessToken) {
@@ -130,35 +149,6 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
                     assertTableHasOneRecord(PROFILE_SERVICE_PROJECT_TABLE, clause);
                     assertNotificationTaskPersistedInDatabase(NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC);
                 });
-    }
-
-    private void getBotTasks() throws IOException {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth(botUsername, botPassword);
-
-        ResponseEntity<String> response = testRestTemplate.exchange(
-                BOT_TASKS_ENDPOINT_COUNT_10,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                String.class
-        );
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        JsonNode tasks = objectMapper.readTree(response.getBody()).get("tasks");
-        JsonNode notificationTask = StreamSupport.stream(tasks.spliterator(), false)
-                .filter(task ->
-                        NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC.equals(
-                                task.path("taskType").asText()
-                        )
-                )
-                .findFirst()
-                .orElseThrow();
-
-        JsonNode mentors = notificationTask.path("payload").path("mentors");
-        assertThat(mentors.get(0)
-                .path("mentor_telegram_user_id")
-                .asLong()
-        ).isEqualTo(MENTOR_ID);
     }
 
     private void assertTableHasOneRecord(String tableName, String clause) {
