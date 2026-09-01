@@ -4,7 +4,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.example.e2etests.tests.base.E2eTestBase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -34,34 +33,32 @@ public class ReviewImporterE2eTest extends E2eTestBase {
     private static final Duration IMPORT_TIMEOUT_ONE_MINUTE = Duration.ofSeconds(60);
     private static final Duration IMPORT_TIMEOUT_TWO_MINUTES = Duration.ofSeconds(120);
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
-    private static final Duration SLEEP_TEN_SECONDS_INTERVAL = Duration.ofMillis(10_000);
 
     @BeforeEach
     public void setup() {
-        clearTables();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        clearTables();
+        jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles_details RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE project_service.reviews RESTART IDENTITY CASCADE");
     }
 
     @Test
-    public void when() {
+    public void shouldImportProjectReviews() {
         Integer beforeCountRowsInTable = getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE);
         assertEquals(0, beforeCountRowsInTable);
         startImportByAPI(API_USERS_IMPORT, IMPORT_TIMEOUT_ONE_MINUTE, jdbcTemplate, AUTH_SERVICE_USERS_TABLE);
         startImportByAPI(API_PROFILES_IMPORT, IMPORT_TIMEOUT_ONE_MINUTE, jdbcTemplate, PROFILE_SERVICE_PROFILES_TABLE);
         startImportByAPI(API_MENTORS_IMPORT, IMPORT_TIMEOUT_TWO_MINUTES, jdbcTemplate, MENTOR_SERVICE_MENTORS_TABLE);
         startImportByAPI(API_PROJECTS_IMPORT, IMPORT_TIMEOUT_ONE_MINUTE, jdbcTemplate, PROJECT_SERVICE_PROJECTS_TABLE);
-        Integer totalProjects = getCountRowsInTable(PROJECT_SERVICE_PROJECTS_TABLE);
-        assertThat(totalProjects).isGreaterThan(0);
+
         startImport(API_PROJECT_REVIEW_IMPORT);
-        try {
-            Thread.sleep(SLEEP_TEN_SECONDS_INTERVAL);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        await().atMost(IMPORT_TIMEOUT_ONE_MINUTE).pollInterval(POLL_INTERVAL)
+                .untilAsserted(() ->
+                        assertThat(getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE)).isGreaterThan(0));
         Integer finalCount = getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE);
         assertThat(finalCount).isGreaterThan(0);
     }
@@ -84,17 +81,6 @@ public class ReviewImporterE2eTest extends E2eTestBase {
                 new HttpEntity<>(createHeaders(getAdminJWT())),
                 String.class
         );
-    }
-
-    private void clearTables() {
-        jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles_details RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.reviews RESTART IDENTITY CASCADE");
     }
 
     private String getAdminJWT() {
