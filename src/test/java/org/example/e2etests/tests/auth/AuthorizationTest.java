@@ -109,55 +109,55 @@ class AuthorizationTest extends E2eTestBase {
         assertThat(users).hasSize(1);
     }
 
-        @Test
-        void shouldUpdateMentorTelegramUrlFromAuthenticatedUserTelegramUsername() {
-            String firstToken = authenticateViaTelegram(telegramInitData);
-            Claims firstClaims = parseJwt(firstToken);
-            Long telegramUserId = extractTelegramUserIdFrom(firstClaims);
+    @Test
+    void shouldUpdateMentorTelegramUrlFromAuthenticatedUserTelegramUsername() {
+        String firstToken = authenticateViaTelegram(telegramInitData);
+        Claims firstClaims = parseJwt(firstToken);
+        Long telegramUserId = extractTelegramUserIdFrom(firstClaims);
 
-            upsertInternalUser(telegramUserId, List.of("MENTOR"));
-            insertMentor(telegramUserId, "https://t.me/old_username");
+        upsertInternalUser(telegramUserId, List.of("MENTOR"));
+        insertMentor(telegramUserId, "https://t.me/old_username");
 
-            authenticateViaTelegram(updatedTelegramInitData);
+        authenticateViaTelegram(updatedTelegramInitData);
 
-            Awaitility.await()
-                    .atMost(AWAIT_TIMEOUT)
-                    .pollInterval(AWAIT_POLL_INTERVAL)
-                    .ignoreExceptions()
-                    .untilAsserted(() -> {
-                        Map<String, Object> mentor = jdbcTemplate.queryForMap(
-                                "SELECT * FROM mentor_service.mentors WHERE mentor_telegram_user_id = ?",
-                                telegramUserId
-                        );
+        Awaitility.await()
+                .atMost(AWAIT_TIMEOUT)
+                .pollInterval(AWAIT_POLL_INTERVAL)
+                .ignoreExceptions()
+                .untilAsserted(() -> {
+                    Map<String, Object> mentor = jdbcTemplate.queryForMap(
+                            "SELECT * FROM mentor_service.mentors WHERE mentor_telegram_user_id = ?",
+                            telegramUserId
+                    );
 
-                        assertThat(mentor)
-                                .containsEntry("mentor_telegram_user_id", telegramUserId)
-                                .containsEntry("telegram_url", "https://t.me/yeahigh")
-                                .containsEntry("is_active", true);
-                    });
-        }
+                    assertThat(mentor)
+                            .containsEntry("mentor_telegram_user_id", telegramUserId)
+                            .containsEntry("telegram_url", "https://t.me/yeahigh")
+                            .containsEntry("is_active", true);
+                });
+    }
 
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        HttpEntity<String> request = new HttpEntity<>(telegramInitData, headers);
-
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, String> jsonBody = Collections.singletonMap("initDataRaw", telegramInitData);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 AUTH_ENDPOINT,
                 request,
                 String.class
         );
-
         assertThat(response.getHeaders().getFirst("X-Access-Token")).isNotNull();
         return response.getHeaders().getFirst("X-Access-Token");
     }
 
-    private Claims parseJwt(String token){
-         return Jwts.parser()
-                 .verifyWith(secretKey())
-                 .build()
-                 .parseSignedClaims(token)
-                 .getPayload();
+
+    private Claims parseJwt(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private Long extractTelegramUserIdFrom(Claims claims) {
@@ -226,9 +226,9 @@ class AuthorizationTest extends E2eTestBase {
     private void insertMentor(Long telegramUserId, String telegramUrl) {
         jdbcTemplate.update(
                 """
-                INSERT INTO mentor_service.mentors (mentor_telegram_user_id, telegram_url, is_active)
-                VALUES (?, ?, true)
-                """,
+                        INSERT INTO mentor_service.mentors (mentor_telegram_user_id, telegram_url, is_active)
+                        VALUES (?, ?, true)
+                        """,
                 telegramUserId,
                 telegramUrl
         );
