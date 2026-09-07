@@ -7,6 +7,47 @@ on:
   repository_dispatch:
     types: [run-e2e-tests]
   workflow_dispatch:
+    inputs:
+      gateway_tag:
+        description: 'Docker tag for gateway service'
+        required: false
+        default: 'dev'
+        type: string
+      auth_service_tag:
+        description: 'Docker tag for auth-service'
+        required: false
+        default: 'dev'
+        type: string
+      data_importer_tag:
+        description: 'Docker tag for data-importer'
+        required: false
+        default: 'dev'
+        type: string
+      profile_service_tag:
+        description: 'Docker tag for profile-service'
+        required: false
+        default: 'dev'
+        type: string
+      project_service_tag:
+        description: 'Docker tag for project-service'
+        required: false
+        default: 'dev'
+        type: string
+      mentor_service_tag:
+        description: 'Docker tag for mentor-service'
+        required: false
+        default: 'dev'
+        type: string
+      job_market_analytics_service_tag:
+        description: 'Docker tag for job-market-analytics-service'
+        required: false
+        default: 'dev'
+        type: string
+      telegram_bot_adapter_tag:
+        description: 'Docker tag for telegram-bot-adapter'
+        required: false
+        default: 'dev'
+        type: string
 
 
 permissions:
@@ -47,14 +88,38 @@ jobs:
 
       - name: Run E2E tests
         env:
-          GATEWAY_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.gateway_tag || 'dev' }}
-          AUTH_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.auth_service_tag || 'dev' }}
-          DATA_IMPORTER_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.data_importer_tag || 'dev' }}
-          PROFILE_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.profile_service_tag || 'dev' }}
-          PROJECT_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.project_service_tag || 'dev' }}
-          MENTOR_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.mentor_service_tag || 'dev' }}
-          JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.job_market_analytics_service_tag || 'dev' }}
-          TELEGRAM_BOT_ADAPTER_DOCKER_IMAGE_TAG: ${{ github.event.client_payload.telegram_bot_adapter_tag || 'dev' }}
+          GATEWAY_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.gateway_tag
+                || github.event.client_payload.gateway_tag
+                || 'dev' }}
+          AUTH_SERVICE_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.auth_service_tag
+                || github.event.client_payload.auth_service_tag
+                || 'dev' }}
+          DATA_IMPORTER_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.data_importer_tag
+                || github.event.client_payload.data_importer_tag
+                || 'dev' }}
+          PROFILE_SERVICE_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.profile_service_tag
+                || github.event.client_payload.profile_service_tag
+                || 'dev' }}
+          PROJECT_SERVICE_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.project_service_tag
+                || github.event.client_payload.project_service_tag
+                || 'dev' }}
+          MENTOR_SERVICE_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.mentor_service_tag
+                || github.event.client_payload.mentor_service_tag
+                || 'dev' }}
+          JOB_MARKET_ANALYTICS_SERVICE_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.job_market_analytics_service_tag
+                || github.event.client_payload.job_market_analytics_service_tag
+                || 'dev' }}
+          TELEGRAM_BOT_ADAPTER_DOCKER_IMAGE_TAG: >-
+            ${{ github.event.inputs.telegram_bot_adapter_tag
+                || github.event.client_payload.telegram_bot_adapter_tag
+                || 'dev' }}
 
           TESTCONTAINER_DOCKER_IMAGES_TAG: dev
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
