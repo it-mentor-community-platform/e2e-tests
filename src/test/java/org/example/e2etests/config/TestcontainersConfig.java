@@ -59,6 +59,12 @@ public class TestcontainersConfig {
     @Value("${secrets.tg-token}")
     private String telegramBotToken;
 
+    @Value("${telegram-bot-adapter.auth.username}")
+    private String telegramAdapterUsername;
+
+    @Value("${telegram-bot-adapter.auth.password}")
+    private String telegramAdapterPassword;
+
     @Value("${secrets.hh.access-token}")
     private String hhAppAccessToken;
 
@@ -205,6 +211,8 @@ public class TestcontainersConfig {
     GenericContainer<?> telegramBotAdapter(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("telegram-bot-adapter/telegram-bot-adapter", resolveTag(tags.getTelegramBotAdapter()), network)
                 .withNetworkAliases("telegram-bot-adapter")
+                .withEnv("TELEGRAM_ADAPTER_USERNAME", telegramAdapterUsername)
+                .withEnv("TELEGRAM_ADAPTER_PASSWORD", telegramAdapterPassword)
                 .dependsOn(postgres, kafka);
     }
 
