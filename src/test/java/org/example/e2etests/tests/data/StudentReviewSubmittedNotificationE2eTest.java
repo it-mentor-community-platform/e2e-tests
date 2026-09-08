@@ -4,32 +4,28 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.assertj.core.api.Assertions;
-import org.example.e2etests.dto.CreateProjectRequest;
-import org.example.e2etests.dto.CreateReviewRequest;
+import org.example.e2etests.dto.*;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
-import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
+import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Slf4j
 public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
@@ -45,36 +41,40 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
 
     private static final List<String> TABLES_TO_TRUNCATE = List.of(
             AUTH_SERVICE_USERS_TABLE,
-            PROJECT_SERVICE_PROJECTS_TABLE,
-            PROFILE_SERVICE_PROJECT_TABLE,
+            PROFILE_SERVICE_PROFILES_DETAILS_TABLE,
             PROFILE_SERVICE_PROFILES_TABLE,
+            PROJECT_SERVICE_REVIEWS_TABLE,
+            PROJECT_SERVICE_PROJECTS_TABLE,
             BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE
     );
 
     @BeforeEach
     void setUp() {
-        try { Thread.sleep(15_000); } catch (InterruptedException ignored) {}
-        List<String> allTables = new java.util.ArrayList<>(TABLES_TO_TRUNCATE);
-        if (!allTables.contains(PROJECT_SERVICE_REVIEWS_TABLE)) {
-            allTables.add(PROJECT_SERVICE_REVIEWS_TABLE);
-        }
-        jdbcTemplate.execute(
-                """
-                        TRUNCATE TABLE %s
-                        RESTART IDENTITY CASCADE
-                        """.formatted(String.join(", ", allTables))
-        );
-        jdbcTemplate.execute("TRUNCATE TABLE " + BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE + " RESTART IDENTITY CASCADE");
+        truncateTables(TABLES_TO_TRUNCATE);
+
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
-        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
-        assertTableIsEmpty(PROFILE_SERVICE_PROJECT_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_DETAILS_TABLE);
         assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
         assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
 
         assertKafkaTopicEmpty(List.of(
                 PROJECTS_PROJECT_CREATED_TOPIC,
                 NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC
         ));
+    }
+
+    @AfterEach
+    void tearDown() {
+        truncateTables(TABLES_TO_TRUNCATE);
+
+        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_DETAILS_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+        assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
     }
 
     @Test
@@ -99,8 +99,8 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        Map<String, String> jsonBody = java.util.Collections.singletonMap("initDataRaw", telegramInitData);
-        HttpEntity<java.util.Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
+        Map<String, String> jsonBody = Collections.singletonMap("initDataRaw", telegramInitData);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 AUTH_ENDPOINT,
                 request,
@@ -164,8 +164,9 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
                 .projectSourceType("TELEGRAM_BOT")
                 .build();
 
+        String jwtToken = JwtTestUtils.getAdminJWT(jwtSecret);
         HttpEntity<CreateProjectRequest> requestEntity =
-                new HttpEntity<>(requestBody, createHeaders(createAdminToken()));
+                new HttpEntity<>(requestBody, createHeaders(jwtToken));
 
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 "http://" + projectService.getHost() + ":" + projectService.getMappedPort(8080)
@@ -192,19 +193,22 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
                 .build();
         HttpEntity<CreateReviewRequest> requestEntity =
                 new HttpEntity<>(requestBody, createHeaders(accessToken));
-        ResponseEntity<String> response = testRestTemplate.postForEntity(
+        ResponseEntity<ReviewResponseDto> response = testRestTemplate.postForEntity(
                 PROJECT_REVIEW_FRONTEND_ENDPOINT,
                 requestEntity,
-                String.class
+                ReviewResponseDto.class
         );
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        JsonNode responseBody = objectMapper.readTree(response.getBody());
-        assertThat(responseBody.path("reviewer_telegram_user_id").asLong())
-                .isEqualTo(reviewerTelegramUserId);
-        assertThat(responseBody.path("url").asText())
-                .isEqualTo(REVIEW_URL);
-        assertThat(responseBody.path("project").path("github_repository_url").asText())
-                .isEqualTo(GITHUB_REPOSITORY_URL);
+
+        ReviewResponseDto responseBody = response.getBody();
+
+        assertNotNull(responseBody, "Response body should not be null");
+
+        assertThat(responseBody.reviewerTelegramUserId()).isEqualTo(reviewerTelegramUserId);
+        assertThat(responseBody.url()).isEqualTo(REVIEW_URL);
+
+        assertNotNull(responseBody.project(), "Project in response should not be null");
+        assertThat(responseBody.project().githubRepositoryUrl()).isEqualTo(GITHUB_REPOSITORY_URL);
     }
 
     private void assertNotificationTaskPersistedInDatabase(long reviewerTelegramUserId)
@@ -222,7 +226,6 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
         );
 
         Assertions.assertThat(payload).isNotBlank();
-
         JsonNode payloadJson = objectMapper.readTree(payload);
 
         assertThat(payloadJson.path("reviewer_telegram_user_id").asLong())
@@ -235,31 +238,27 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
 
     private void assertNotificationTaskAvailableViaTelegramBotAdapterApi(long reviewerTelegramUserId) throws IOException {
         HttpHeaders headers = new HttpHeaders();
-        String auth = "username:password";
-        byte[] encodedAuth = java.util.Base64.getEncoder().encode(
-                auth.getBytes(java.nio.charset.StandardCharsets.UTF_8)
-        );
-        headers.set("Authorization", "Basic " + new String(encodedAuth));
+        headers.setBasicAuth(botUsername, botPassword);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        ResponseEntity<String> response = testRestTemplate.exchange(
+
+        ResponseEntity<TasksResponseDto> response = testRestTemplate.exchange(
                 BOT_TASKS_ENDPOINT_COUNT_10,
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                String.class
+                TasksResponseDto.class
         );
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        JsonNode tasks = objectMapper.readTree(response.getBody()).get("tasks");
-        JsonNode notificationTask = StreamSupport.stream(tasks.spliterator(), false)
-                .filter(task ->
-                        NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC.equals(
-                                task.path("taskType").asText()
-                        )
-                )
+        assertNotNull(response.getBody(), "Response body should not be null");
+        TaskDto notificationTask = response.getBody().tasks().stream()
+                .filter(taskDto -> NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC.equals(taskDto.taskType()))
                 .findFirst()
-                .orElseThrow();
-        long actualId = notificationTask.path("payload")
-                .path("reviewer_telegram_user_id").asLong();
-        assertThat(actualId).isEqualTo(reviewerTelegramUserId);
+                .orElseThrow(() -> new AssertionError("Task with type " + NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC + " not found"));
+        TaskPayloadDto payloadDto = notificationTask.payload();
+        assertNotNull(payloadDto, "Task payload should not be null");
+        assertThat(payloadDto.reviewerTelegramUserId()).isEqualTo(reviewerTelegramUserId);
+        assertThat(payloadDto.url()).isEqualTo(REVIEW_URL);
+        assertNotNull(payloadDto.project(), "Project in payload should not be null");
+        assertThat(payloadDto.project().githubRepositoryUrl()).isEqualTo(GITHUB_REPOSITORY_URL);
     }
 
     private void assertKafkaTopicEmpty(List<String> topics) {
@@ -274,25 +273,6 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
     private void assertTableHasOneRecord(String tableName, String clause) {
         int count = JdbcTestUtils.countRowsInTableWhere(jdbcTemplate, tableName, clause);
         assertThat(count).isOne();
-    }
-
-    private void assertTableIsEmpty(String tableName) {
-        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
-        assertThat(count).isZero();
-    }
-
-    private String createAdminToken() {
-        SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
-        Date now = new Date();
-
-        return Jwts.builder()
-                .subject("123456789")
-                .claim("roles", List.of("ADMIN"))
-                .claim("telegram_username", "e2e_test_admin")
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + 3_600_000))
-                .signWith(key)
-                .compact();
     }
 
     private Claims parseJwt(String token) {
