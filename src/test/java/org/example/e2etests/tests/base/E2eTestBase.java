@@ -11,12 +11,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.jdbc.JdbcTestUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
 import javax.crypto.SecretKey;
 import java.util.Base64;
+import java.util.Collection;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
@@ -26,6 +30,7 @@ public abstract class E2eTestBase {
     protected static final String PROJECT_SERVICE_PROJECTS_TABLE = "project_service.projects";
     protected static final String PROJECT_SERVICE_REVIEWS_TABLE = "project_service.reviews";
     protected static final String PROFILE_SERVICE_PROFILES_TABLE = "profile_service.profiles";
+    protected static final String PROFILE_SERVICE_PROFILES_DETAILS_TABLE = "profile_service.profiles_details";
     protected static final String PROFILE_SERVICE_PROJECT_TABLE = "profile_service.project";
     protected static final String MENTOR_SERVICE_MENTORS_TABLE = "mentor_service.mentors";
     protected static final String MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE = "mentor_service.guaranteed_reviews_prices";
@@ -90,5 +95,24 @@ public abstract class E2eTestBase {
 
     protected SecretKey secretKey() {
         return Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
+    }
+
+    protected void truncateTables(Collection<String> tables) {
+        if (tables == null || tables.isEmpty()) {
+            return;
+        }
+        for (String table : tables) {
+            jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
+        }
+    }
+
+    protected void assertTableIsEmpty(String tableName) {
+        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
+        assertThat(count).isZero();
+    }
+
+    protected void assertTableHasRecords(String tableName) {
+        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
+        assertThat(count).isGreaterThan(0);
     }
 }
