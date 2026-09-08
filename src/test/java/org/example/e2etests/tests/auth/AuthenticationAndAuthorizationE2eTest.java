@@ -15,10 +15,11 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AuthorizationTest extends E2eTestBase {
+class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
 
     private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration AWAIT_POLL_INTERVAL = Duration.ofMillis(200);
@@ -28,9 +29,16 @@ class AuthorizationTest extends E2eTestBase {
     private static final String KAFKA_TOPIC = "auth.user.created";
     private static final String EXPECTED_ROLE = "STUDENT";
 
+    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+            PROFILE_SERVICE_PROFILES_TABLE,
+            AUTH_SERVICE_USERS_TABLE,
+            MENTOR_SERVICE_MENTORS_TABLE
+    );
+
+
     @AfterEach
     void cleanTestData() {
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles, auth_service.users, mentor_service.mentors RESTART IDENTITY CASCADE");
+        truncateTables(TABLE_TO_TRUNCATE);
     }
 
     @Test
