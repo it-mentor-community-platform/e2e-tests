@@ -1,24 +1,20 @@
 package org.example.e2etests.tests.data;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
-import javax.crypto.SecretKey;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
+import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
@@ -34,21 +30,34 @@ public class ReviewImporterE2eTest extends E2eTestBase {
     private static final Duration IMPORT_TIMEOUT_TWO_MINUTES = Duration.ofSeconds(120);
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
+    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+            AUTH_SERVICE_USERS_TABLE,
+            MENTOR_SERVICE_MENTORS_TABLE,
+            MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE,
+            PROFILE_SERVICE_PROFILES_TABLE,
+            PROFILE_SERVICE_PROFILES_DETAILS_TABLE,
+            PROFILE_SERVICE_PROJECT_TABLE,
+            PROJECT_SERVICE_PROJECTS_TABLE,
+            PROJECT_SERVICE_REVIEWS_TABLE
+    );
+
     @BeforeEach
     public void setup() {
-        jdbcTemplate.execute("TRUNCATE TABLE auth_service.users RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.mentors RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE mentor_service.guaranteed_reviews_prices RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles_details RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.reviews RESTART IDENTITY CASCADE");
+        truncateTables(TABLE_TO_TRUNCATE);
+
+        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
+        assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_DETAILS_TABLE);
+        assertTableIsEmpty(PROFILE_SERVICE_PROJECT_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
     }
 
     @Test
     public void shouldImportProjectReviews() {
-        Integer beforeCountRowsInTable = getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE);
+        Integer beforeCountRowsInTable = JdbcTestUtils.countRowsInTable(jdbcTemplate, PROJECT_SERVICE_REVIEWS_TABLE);
         assertEquals(0, beforeCountRowsInTable);
         startImportByAPI(API_USERS_IMPORT, IMPORT_TIMEOUT_ONE_MINUTE, jdbcTemplate, AUTH_SERVICE_USERS_TABLE);
         startImportByAPI(API_PROFILES_IMPORT, IMPORT_TIMEOUT_ONE_MINUTE, jdbcTemplate, PROFILE_SERVICE_PROFILES_TABLE);
@@ -58,8 +67,9 @@ public class ReviewImporterE2eTest extends E2eTestBase {
         startImport(API_PROJECT_REVIEW_IMPORT);
         await().atMost(IMPORT_TIMEOUT_ONE_MINUTE).pollInterval(POLL_INTERVAL)
                 .untilAsserted(() ->
-                        assertThat(getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE)).isGreaterThan(0));
-        Integer finalCount = getCountRowsInTable(PROJECT_SERVICE_REVIEWS_TABLE);
+                        assertThat(JdbcTestUtils.countRowsInTable(jdbcTemplate, PROJECT_SERVICE_REVIEWS_TABLE))
+                                .isGreaterThan(0));
+        Integer finalCount = JdbcTestUtils.countRowsInTable(jdbcTemplate, PROJECT_SERVICE_REVIEWS_TABLE);
         assertThat(finalCount).isGreaterThan(0);
     }
 
@@ -71,28 +81,12 @@ public class ReviewImporterE2eTest extends E2eTestBase {
                                 .isGreaterThan(0));
     }
 
-    private int getCountRowsInTable(String tableName) {
-        return JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
-    }
-
     private void startImport(String path) {
+        String jwtToken = JwtTestUtils.getAdminJWT(jwtSecret);
         testRestTemplate.postForEntity(
                 path,
-                new HttpEntity<>(createHeaders(getAdminJWT())),
+                new HttpEntity<>(createHeaders(jwtToken)),
                 String.class
         );
-    }
-
-    private String getAdminJWT() {
-        SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
-        Date now = new Date();
-        return Jwts.builder()
-                .subject("review_test")
-                .claim("roles", List.of("ADMIN"))
-                .claim("telegram_username", "e2e_test_admin")
-                .issuedAt(now)
-                .expiration(new Date(now.getTime() + 3_600_000))
-                .signWith(key)
-                .compact();
     }
 }
