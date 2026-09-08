@@ -24,31 +24,32 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
+import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 
 @Slf4j
 public class ProjectBookkepingE2eImportTest extends E2eTestBase {
 
+    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+            PROFILE_SERVICE_PROJECT_TABLE,
+            PROJECT_SERVICE_PROJECTS_TABLE,
+            BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE
+    );
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE telegram_bot_adapter.telegram_bot_tasks RESTART IDENTITY CASCADE");
+        truncateTables(TABLE_TO_TRUNCATE);
 
-        assertTableIsEmpty("project_service.projects");
-        assertTableIsEmpty("profile_service.project");
-        assertTableIsEmpty("telegram_bot_adapter.telegram_bot_tasks");
+        assertTableIsEmpty(PROFILE_SERVICE_PROJECT_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+        assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
+
         kafkaConsumer.seekToEnd(kafkaConsumer.assignment());
         assertKafkaTopicEmpty("projects.project.created");
     }
 
     @AfterEach
     void clearTable() {
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.project RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE project_service.projects RESTART IDENTITY CASCADE");
-        jdbcTemplate.execute("TRUNCATE TABLE telegram_bot_adapter.telegram_bot_tasks RESTART IDENTITY CASCADE");
-
+        truncateTables(TABLE_TO_TRUNCATE);
     }
 
     @Test
@@ -167,14 +168,25 @@ public class ProjectBookkepingE2eImportTest extends E2eTestBase {
         assertThat(records.count()).isZero();
     }
 
-    private void assertTableIsEmpty(String tableName) {
-        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
-        assertThat(count).isZero();
-    }
-
     private void assertTableIsEmpty(String tableName, String clause) {
         int count = JdbcTestUtils.countRowsInTableWhere(jdbcTemplate, tableName, clause);
         assertThat(count).isZero();
+    }
+
+    private void startImport(String path, CreateProjectRequest requestBody) {
+        int port = gateway.getMappedPort(8080);
+        String host = gateway.getHost();
+        if (path.contains("internal")) {
+            port = projectService.getMappedPort(8080);
+            host = projectService.getHost();
+        }
+        HttpEntity<CreateProjectRequest> requestEntity = new HttpEntity<>(requestBody, createHeaders(
+                createAdminToken()));
+        testRestTemplate.postForEntity(
+                "http://" + host + ":" + port + path,
+                requestEntity,
+                String.class
+        );
     }
 
     private String createAdminToken() {
@@ -188,27 +200,6 @@ public class ProjectBookkepingE2eImportTest extends E2eTestBase {
                 .expiration(new Date(now.getTime() + 3_600_000))
                 .signWith(key)
                 .compact();
-    }
-
-    private void startImport(String path, CreateProjectRequest requestBody) {
-        int port = gateway.getMappedPort(8080);
-        String host = gateway.getHost();
-        if (path.contains("internal")) {
-            port = projectService.getMappedPort(8080);
-            host = projectService.getHost();
-        }
-        HttpEntity<CreateProjectRequest> requestEntity = new HttpEntity<>(requestBody, createHeaders(createAdminToken()));
-        testRestTemplate.postForEntity(
-                "http://" + host + ":" + port + path,
-                requestEntity,
-                String.class
-        );
-
-    }
-
-    private void assertTableHasRecords(String tableName) {
-        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
-        assertThat(count).isGreaterThan(0);
     }
 
     private void profileCreate() {
