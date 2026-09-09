@@ -29,7 +29,7 @@ class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
     private static final String KAFKA_TOPIC = "auth.user.created";
     private static final String EXPECTED_ROLE = "STUDENT";
 
-    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
             PROFILE_SERVICE_PROFILES_TABLE,
             AUTH_SERVICE_USERS_TABLE,
             MENTOR_SERVICE_MENTORS_TABLE
@@ -38,7 +38,7 @@ class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
 
     @AfterEach
     void cleanTestData() {
-        truncateTables(TABLE_TO_TRUNCATE);
+        truncateTables(TABLES_TO_TRUNCATE);
     }
 
     @Test
