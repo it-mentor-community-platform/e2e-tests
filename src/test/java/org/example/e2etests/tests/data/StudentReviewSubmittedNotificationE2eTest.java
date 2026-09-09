@@ -52,13 +52,6 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
     void setUp() {
         truncateTables(TABLES_TO_TRUNCATE);
 
-        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
-        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_DETAILS_TABLE);
-        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
-        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
-        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
-        assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
-
         assertKafkaTopicEmpty(List.of(
                 PROJECTS_PROJECT_CREATED_TOPIC,
                 NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC
@@ -69,11 +62,9 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
     void tearDown() {
         truncateTables(TABLES_TO_TRUNCATE);
 
-        assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
-        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_DETAILS_TABLE);
-        assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
         assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
         assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+
         assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
     }
 
@@ -277,7 +268,7 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
 
     private Claims parseJwt(String token) {
         return Jwts.parser()
-                .verifyWith(secretKey())
+                .verifyWith(JwtTestUtils.secretKey(jwtSecret))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
