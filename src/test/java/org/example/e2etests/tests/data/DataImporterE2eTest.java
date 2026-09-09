@@ -103,7 +103,7 @@ public class DataImporterE2eTest extends E2eTestBase {
         );
 
         startImport(API_MENTORS_IMPORT);
-        executeWithAwait(120, () -> {
+        executeWithAwait(60, () -> {
                     assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE);
                     assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE);
                     assertTableHasRecords(MENTOR_SERVICE_MENTORS_PROGRAMMING_LANGUAGES_TABLE);
