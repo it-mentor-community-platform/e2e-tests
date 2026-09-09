@@ -1,7 +1,7 @@
 package org.example.e2etests.tests.base;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.example.e2etests.config.GoogleSheetsClient;
 import org.example.e2etests.config.TestcontainersConfig;
@@ -16,12 +16,11 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 
-import javax.crypto.SecretKey;
-import java.util.Base64;
 import java.util.Collection;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+@Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
 public abstract class E2eTestBase {
@@ -93,17 +92,16 @@ public abstract class E2eTestBase {
     @Autowired
     protected ObjectMapper objectMapper;
 
-    protected SecretKey secretKey() {
-        return Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
-    }
 
     protected void truncateTables(Collection<String> tables) {
         if (tables == null || tables.isEmpty()) {
             return;
         }
-        for (String table : tables) {
-            jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
-        }
+        jdbcTemplate.execute(
+                """
+                        TRUNCATE TABLE %s
+                        RESTART IDENTITY CASCADE
+                        """.formatted(String.join(", ", tables)));
     }
 
     protected void assertTableIsEmpty(String tableName) {
