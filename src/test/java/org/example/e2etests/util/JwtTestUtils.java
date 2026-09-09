@@ -12,8 +12,12 @@ public final class JwtTestUtils {
 
     private JwtTestUtils() {}
 
+    public static SecretKey secretKey(String jwtSecret) {
+        return Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
+    }
+
     public static String getAdminJWT(String jwtSecret) {
-        SecretKey key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(jwtSecret));
+        SecretKey key = secretKey(jwtSecret);
         Date now = new Date();
         return Jwts.builder()
                 .subject("review_test")
