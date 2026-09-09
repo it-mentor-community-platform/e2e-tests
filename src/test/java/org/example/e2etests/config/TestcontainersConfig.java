@@ -153,6 +153,8 @@ public class TestcontainersConfig {
     @Bean
     GenericContainer<?> gateway(Network network) {
         return springService("gateway/gateway", resolveTag(tags.getGateway()), network)
+                .withEnv("TELEGRAM_ADAPTER_USERNAME", telegramAdapterUsername)
+                .withEnv("TELEGRAM_ADAPTER_PASSWORD", telegramAdapterPassword)
                 .withEnv("JWT_SECRET", jwtSecret);
     }
 
@@ -211,8 +213,6 @@ public class TestcontainersConfig {
     GenericContainer<?> telegramBotAdapter(Network network, PostgreSQLContainer<?> postgres, KafkaContainer kafka) {
         return springService("telegram-bot-adapter/telegram-bot-adapter", resolveTag(tags.getTelegramBotAdapter()), network)
                 .withNetworkAliases("telegram-bot-adapter")
-                .withEnv("TELEGRAM_ADAPTER_USERNAME", telegramAdapterUsername)
-                .withEnv("TELEGRAM_ADAPTER_PASSWORD", telegramAdapterPassword)
                 .dependsOn(postgres, kafka);
     }
 
