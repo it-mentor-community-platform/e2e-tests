@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -34,7 +35,6 @@ class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
             AUTH_SERVICE_USERS_TABLE,
             MENTOR_SERVICE_MENTORS_TABLE
     );
-
 
     @AfterEach
     void cleanTestData() {
@@ -159,10 +159,9 @@ class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
         return response.getHeaders().getFirst("X-Access-Token");
     }
 
-
     private Claims parseJwt(String token) {
         return Jwts.parser()
-                .verifyWith(secretKey())
+                .verifyWith(JwtTestUtils.secretKey(jwtSecret))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
