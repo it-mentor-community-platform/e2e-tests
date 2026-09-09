@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.assertj.core.api.Assertions;
 import org.example.e2etests.dto.*;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -86,7 +87,6 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
     private void getBotTasks() throws IOException {
         HttpHeaders headers = new HttpHeaders();
         headers.setBasicAuth(botUsername, botPassword);
-        headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setContentType(MediaType.APPLICATION_JSON);
         ResponseEntity<TasksResponseDto> response = testRestTemplate.exchange(
                 BOT_TASKS_ENDPOINT_COUNT_10,
@@ -177,7 +177,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     private Claims parseJwt(String token) {
         return Jwts.parser()
-                .verifyWith(secretKey())
+                .verifyWith(JwtTestUtils.secretKey(jwtSecret))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
