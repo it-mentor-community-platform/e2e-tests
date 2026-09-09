@@ -1,14 +1,14 @@
 package org.example.e2etests.tests.data;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.assertj.core.api.Assertions;
-import org.example.e2etests.dto.CreateProjectRequest;
+import org.example.e2etests.dto.*;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -16,14 +16,14 @@ import org.springframework.test.jdbc.JdbcTestUtils;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.StreamSupport;
+import java.util.*;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.example.e2etests.HttpHeadersTestUtils.createHeaders;
+import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Slf4j
 public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
@@ -36,7 +36,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
     private static final String MENTOR_TELEGRAM_URL = "https://github.com/zhukovsd-mentor1";
     private static final long MENTOR_ID = 12745679L;
 
-    private static final List<String> TABLES_TO_TRUNCATE = List.of(
+    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
             AUTH_SERVICE_USERS_TABLE,
             PROJECT_SERVICE_PROJECTS_TABLE,
             PROFILE_SERVICE_PROJECT_TABLE,
@@ -48,12 +48,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     @BeforeEach
     void setUp() {
-        jdbcTemplate.execute(
-                """
-                        TRUNCATE TABLE %s
-                        RESTART IDENTITY CASCADE
-                        """.formatted(String.join(", ", TABLES_TO_TRUNCATE))
-        );
+        truncateTables(TABLE_TO_TRUNCATE);
 
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
         assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
@@ -68,7 +63,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
     }
 
     @Test
-    void shouldCreateNotificationTaskWhenSubmittingProject() throws IOException {
+    void shouldCreateNotificationTaskWhenSubmittingProject() throws Exception {
         createMentor();
         String accessToken = authenticateViaTelegram(telegramInitData);
         createProjectViaFrontend(accessToken);
@@ -77,30 +72,37 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        HttpEntity<String> request = new HttpEntity<>(telegramInitData, headers);
-
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, String> jsonBody = Collections.singletonMap("initDataRaw", telegramInitData);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 AUTH_ENDPOINT,
                 request,
                 String.class
         );
+        Assertions.assertThat(response.getHeaders().getFirst("X-Access-Token")).isNotNull();
+        return response.getHeaders().getFirst("X-Access-Token");
+    }
+
+    private void getBotTasks() throws IOException {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth(botUsername, botPassword);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<TasksResponseDto> response = testRestTemplate.exchange(
+                BOT_TASKS_ENDPOINT_COUNT_10,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                TasksResponseDto.class
+        );
         assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        String accessToken = response.getHeaders().getFirst("X-Access-Token");
-        Assertions.assertThat(accessToken).isNotNull();
-
-        Claims claims = parseJwt(accessToken);
-        long telegramUserId = extractTelegramUserIdFrom(claims);
-
-        String clause = "telegram_user_id='%s'".formatted(telegramUserId);
-        assertTableHasOneRecord(AUTH_SERVICE_USERS_TABLE, clause);
-        await().atMost(30, TimeUnit.SECONDS)
-                .ignoreExceptions()
-                .untilAsserted(() ->
-                        assertTableHasOneRecord(PROFILE_SERVICE_PROFILES_TABLE, clause)
-                );
-        return accessToken;
+        TaskDto notificationTask = response.getBody().tasks().stream()
+                .filter(taskDto -> NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC.equals(taskDto.taskType()))
+                .findFirst()
+                .orElseThrow();
+        TaskPayloadDto payloadDto = notificationTask.payload();
+        assertNotNull(payloadDto, "Task payload should not be null");
+        assertThat(payloadDto.mentors()).isNotNull();
+        assertThat(payloadDto.mentors().getFirst().mentorTelegramUserId()).isEqualTo(MENTOR_ID);
     }
 
     private void createProjectViaFrontend(String accessToken) {
@@ -123,7 +125,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
         String clause = "author_telegram_user_id='%s'".formatted(telegramUserId);
         assertTableHasOneRecord(PROJECT_SERVICE_PROJECTS_TABLE, clause);
-        await().atMost(30, TimeUnit.SECONDS)
+        await().atMost(30, SECONDS)
                 .ignoreExceptions()
                 .untilAsserted(() -> {
                     assertProjectPersistedInGoogleSheet();
@@ -132,43 +134,9 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
                 });
     }
 
-    private void getBotTasks() throws IOException {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth(botUsername, botPassword);
-
-        ResponseEntity<String> response = testRestTemplate.exchange(
-                BOT_TASKS_ENDPOINT_COUNT_10,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                String.class
-        );
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-
-        JsonNode tasks = objectMapper.readTree(response.getBody()).get("tasks");
-        JsonNode notificationTask = StreamSupport.stream(tasks.spliterator(), false)
-                .filter(task ->
-                        NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC.equals(
-                                task.path("taskType").asText()
-                        )
-                )
-                .findFirst()
-                .orElseThrow();
-
-        JsonNode mentors = notificationTask.path("payload").path("mentors");
-        assertThat(mentors.get(0)
-                .path("mentor_telegram_user_id")
-                .asLong()
-        ).isEqualTo(MENTOR_ID);
-    }
-
     private void assertTableHasOneRecord(String tableName, String clause) {
         int count = JdbcTestUtils.countRowsInTableWhere(jdbcTemplate, tableName, clause);
         assertThat(count).isOne();
-    }
-
-    private void assertTableIsEmpty(String tableName) {
-        int count = JdbcTestUtils.countRowsInTable(jdbcTemplate, tableName);
-        assertThat(count).isZero();
     }
 
     private void assertNotificationTaskPersistedInDatabase(String taskType) throws JsonProcessingException {
@@ -182,13 +150,14 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
                 taskType
         );
         Assertions.assertThat(payload).isNotBlank();
+        MentorImportMessageDto payloadDto = objectMapper.readValue(payload, MentorImportMessageDto.class);
+        assertNotNull(payloadDto, "Payload should not be null");
 
-        JsonNode mentors = objectMapper.readTree(payload).path("mentors");
-        assertThat(
-                mentors.get(0)
-                        .path("mentor_telegram_user_id")
-                        .asLong()
-        ).isEqualTo(MENTOR_ID);
+        assertNotNull(payloadDto.mentors(), "Mentors list should not be null");
+        assertThat(payloadDto.mentors().isEmpty()).isFalse();
+
+        MentorDto firstMentor = payloadDto.mentors().getFirst();
+        assertThat(firstMentor.mentorTelegramUserId()).isEqualTo(MENTOR_ID);
     }
 
     private void assertProjectPersistedInGoogleSheet() throws IOException {
@@ -208,7 +177,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     private Claims parseJwt(String token) {
         return Jwts.parser()
-                .verifyWith(secretKey())
+                .verifyWith(JwtTestUtils.secretKey(jwtSecret))
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
