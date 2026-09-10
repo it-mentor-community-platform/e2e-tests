@@ -59,6 +59,12 @@ public class TestcontainersConfig {
     @Value("${secrets.tg-token}")
     private String telegramBotToken;
 
+    @Value("${telegram-bot-adapter.auth.username}")
+    private String telegramAdapterUsername;
+
+    @Value("${telegram-bot-adapter.auth.password}")
+    private String telegramAdapterPassword;
+
     @Value("${secrets.hh.access-token}")
     private String hhAppAccessToken;
 
@@ -147,6 +153,8 @@ public class TestcontainersConfig {
     @Bean
     GenericContainer<?> gateway(Network network) {
         return springService("gateway/gateway", resolveTag(tags.getGateway()), network)
+                .withEnv("TELEGRAM_ADAPTER_USERNAME", telegramAdapterUsername)
+                .withEnv("TELEGRAM_ADAPTER_PASSWORD", telegramAdapterPassword)
                 .withEnv("JWT_SECRET", jwtSecret);
     }
 

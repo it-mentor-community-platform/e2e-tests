@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -15,10 +16,11 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AuthorizationTest extends E2eTestBase {
+class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
 
     private static final Duration AWAIT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration AWAIT_POLL_INTERVAL = Duration.ofMillis(200);
@@ -28,9 +30,15 @@ class AuthorizationTest extends E2eTestBase {
     private static final String KAFKA_TOPIC = "auth.user.created";
     private static final String EXPECTED_ROLE = "STUDENT";
 
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
+            PROFILE_SERVICE_PROFILES_TABLE,
+            AUTH_SERVICE_USERS_TABLE,
+            MENTOR_SERVICE_MENTORS_TABLE
+    );
+
     @AfterEach
     void cleanTestData() {
-        jdbcTemplate.execute("TRUNCATE TABLE profile_service.profiles, auth_service.users, mentor_service.mentors RESTART IDENTITY CASCADE");
+        truncateTables(TABLES_TO_TRUNCATE);
     }
 
     @Test
@@ -109,55 +117,54 @@ class AuthorizationTest extends E2eTestBase {
         assertThat(users).hasSize(1);
     }
 
-        @Test
-        void shouldUpdateMentorTelegramUrlFromAuthenticatedUserTelegramUsername() {
-            String firstToken = authenticateViaTelegram(telegramInitData);
-            Claims firstClaims = parseJwt(firstToken);
-            Long telegramUserId = extractTelegramUserIdFrom(firstClaims);
+    @Test
+    void shouldUpdateMentorTelegramUrlFromAuthenticatedUserTelegramUsername() {
+        String firstToken = authenticateViaTelegram(telegramInitData);
+        Claims firstClaims = parseJwt(firstToken);
+        Long telegramUserId = extractTelegramUserIdFrom(firstClaims);
 
-            upsertInternalUser(telegramUserId, List.of("MENTOR"));
-            insertMentor(telegramUserId, "https://t.me/old_username");
+        upsertInternalUser(telegramUserId, List.of("MENTOR"));
+        insertMentor(telegramUserId, "https://t.me/old_username");
 
-            authenticateViaTelegram(updatedTelegramInitData);
+        authenticateViaTelegram(updatedTelegramInitData);
 
-            Awaitility.await()
-                    .atMost(AWAIT_TIMEOUT)
-                    .pollInterval(AWAIT_POLL_INTERVAL)
-                    .ignoreExceptions()
-                    .untilAsserted(() -> {
-                        Map<String, Object> mentor = jdbcTemplate.queryForMap(
-                                "SELECT * FROM mentor_service.mentors WHERE mentor_telegram_user_id = ?",
-                                telegramUserId
-                        );
+        Awaitility.await()
+                .atMost(AWAIT_TIMEOUT)
+                .pollInterval(AWAIT_POLL_INTERVAL)
+                .ignoreExceptions()
+                .untilAsserted(() -> {
+                    Map<String, Object> mentor = jdbcTemplate.queryForMap(
+                            "SELECT * FROM mentor_service.mentors WHERE mentor_telegram_user_id = ?",
+                            telegramUserId
+                    );
 
-                        assertThat(mentor)
-                                .containsEntry("mentor_telegram_user_id", telegramUserId)
-                                .containsEntry("telegram_url", "https://t.me/yeahigh")
-                                .containsEntry("is_active", true);
-                    });
-        }
+                    assertThat(mentor)
+                            .containsEntry("mentor_telegram_user_id", telegramUserId)
+                            .containsEntry("telegram_url", "https://t.me/yeahigh")
+                            .containsEntry("is_active", true);
+                });
+    }
 
     private String authenticateViaTelegram(String telegramInitData) {
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        HttpEntity<String> request = new HttpEntity<>(telegramInitData, headers);
-
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Map<String, String> jsonBody = Collections.singletonMap("initDataRaw", telegramInitData);
+        HttpEntity<Map<String, String>> request = new HttpEntity<>(jsonBody, headers);
         ResponseEntity<String> response = testRestTemplate.postForEntity(
                 AUTH_ENDPOINT,
                 request,
                 String.class
         );
-
         assertThat(response.getHeaders().getFirst("X-Access-Token")).isNotNull();
         return response.getHeaders().getFirst("X-Access-Token");
     }
 
-    private Claims parseJwt(String token){
-         return Jwts.parser()
-                 .verifyWith(secretKey())
-                 .build()
-                 .parseSignedClaims(token)
-                 .getPayload();
+    private Claims parseJwt(String token) {
+        return Jwts.parser()
+                .verifyWith(JwtTestUtils.secretKey(jwtSecret))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private Long extractTelegramUserIdFrom(Claims claims) {
@@ -226,9 +233,9 @@ class AuthorizationTest extends E2eTestBase {
     private void insertMentor(Long telegramUserId, String telegramUrl) {
         jdbcTemplate.update(
                 """
-                INSERT INTO mentor_service.mentors (mentor_telegram_user_id, telegram_url, is_active)
-                VALUES (?, ?, true)
-                """,
+                        INSERT INTO mentor_service.mentors (mentor_telegram_user_id, telegram_url, is_active)
+                        VALUES (?, ?, true)
+                        """,
                 telegramUserId,
                 telegramUrl
         );

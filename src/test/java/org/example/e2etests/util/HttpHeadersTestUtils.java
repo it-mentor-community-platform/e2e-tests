@@ -1,4 +1,4 @@
-package org.example.e2etests;
+package org.example.e2etests.util;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
