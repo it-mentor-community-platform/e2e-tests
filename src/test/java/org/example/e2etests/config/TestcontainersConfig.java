@@ -44,7 +44,8 @@ public class TestcontainersConfig {
             "auth.user.authenticated",
             "projects.project.created",
             "notifications.mentors.project.submitted",
-            "notifications.students.review.submitted"
+            "notifications.students.review.submitted",
+            "reviews.review.created"
     );
 
     @Value("${jwt.secret}")
@@ -118,7 +119,7 @@ public class TestcontainersConfig {
     @Bean
     @ServiceConnection
     KafkaContainer kafka(Network network) throws Exception {
-        KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"))
+        KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"))
                 .withNetwork(network)
                 .withNetworkAliases("kafka")
                 .withListener("kafka:19092");
