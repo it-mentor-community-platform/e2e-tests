@@ -4,3 +4,4 @@ CREATE SCHEMA IF NOT EXISTS project_service;
 CREATE SCHEMA IF NOT EXISTS mentor_service;
 CREATE SCHEMA IF NOT EXISTS job_market_analytics_service;
 CREATE SCHEMA IF NOT EXISTS telegram_bot_adapter;
+CREATE SCHEMA IF NOT EXISTS data_importer;
