@@ -44,11 +44,6 @@ public class DataImporterE2eTest extends E2eTestBase {
             PROFILE_SERVICE_PROJECT_TABLE
     );
 
-    @BeforeEach
-    void setUp() {
-        truncateTables(TABLE_TO_TRUNCATE);
-    }
-
     @AfterEach
     void cleanTables() {
         truncateTables(TABLE_TO_TRUNCATE);
