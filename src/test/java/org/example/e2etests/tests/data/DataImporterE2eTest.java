@@ -7,6 +7,8 @@ import org.example.e2etests.tests.base.E2eTestBase;
 import org.example.e2etests.util.DataImportTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.List;
@@ -30,11 +32,8 @@ public class DataImporterE2eTest extends E2eTestBase {
             PROFILE_SERVICE_PROJECT_TABLE
     );
 
-    private final DataImportTestUtils importUtils;
-
-    private DataImporterE2eTest(DataImportTestUtils importUtils) {
-        this.importUtils = importUtils;
-    }
+    @Autowired
+    private DataImportTestUtils importUtils;
 
     @AfterEach
     void cleanTables() {

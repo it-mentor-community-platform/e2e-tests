@@ -5,6 +5,7 @@ import org.example.e2etests.tests.base.E2eTestBase;
 import org.example.e2etests.util.DataImportTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.jdbc.JdbcTestUtils;
 
 import java.time.Duration;
@@ -32,11 +33,8 @@ public class ReviewImporterE2eTest extends E2eTestBase {
             PROJECT_SERVICE_REVIEWS_TABLE
     );
 
-    private final DataImportTestUtils importUtils;
-
-    private ReviewImporterE2eTest(DataImportTestUtils importUtils) {
-        this.importUtils = importUtils;
-    }
+    @Autowired
+    private DataImportTestUtils importUtils;
 
     @BeforeEach
     public void setup() {

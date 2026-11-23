@@ -3,9 +3,11 @@ package org.example.e2etests.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.assertj.core.api.Assertions;
 import org.example.e2etests.dto.DataImportRequest;
+import org.example.e2etests.dto.DataImportRequest.DataImportType;
 import org.example.e2etests.tests.base.E2eTestBase;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import static org.awaitility.Awaitility.await;
 import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 
+@Component
 public class DataImportTestUtils extends E2eTestBase {
 
     private static final String API_IMPORT = "/api/data-importer/import";
@@ -23,7 +26,7 @@ public class DataImportTestUtils extends E2eTestBase {
 
     public DataImportTestUtils() {}
 
-    public void importByType(DataImportRequest.DataImportType type) {
+    public void importByType(DataImportType type) {
         long id = startImport(type);
 
         await().atMost(IMPORT_TIMEOUT_TWO_MINUTES).pollInterval(POLL_INTERVAL)
