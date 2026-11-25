@@ -7,7 +7,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.example.e2etests.dto.CreateProjectRequest;
 import org.example.e2etests.tests.base.E2eTestBase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -29,7 +28,7 @@ import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 @Slf4j
 public class ProjectBookkepingE2eImportTest extends E2eTestBase {
 
-    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
             PROFILE_SERVICE_PROJECT_TABLE,
             PROJECT_SERVICE_PROJECTS_TABLE,
             BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE
@@ -37,7 +36,7 @@ public class ProjectBookkepingE2eImportTest extends E2eTestBase {
 
     @BeforeEach
     void setUp() {
-        truncateTables(TABLE_TO_TRUNCATE);
+        truncateTables(TABLES_TO_TRUNCATE);
 
         assertTableIsEmpty(PROFILE_SERVICE_PROJECT_TABLE);
         assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
@@ -45,11 +44,6 @@ public class ProjectBookkepingE2eImportTest extends E2eTestBase {
 
         kafkaConsumer.seekToEnd(kafkaConsumer.assignment());
         assertKafkaTopicEmpty("projects.project.created");
-    }
-
-    @AfterEach
-    void clearTable() {
-        truncateTables(TABLE_TO_TRUNCATE);
     }
 
     @Test
