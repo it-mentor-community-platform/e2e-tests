@@ -4,32 +4,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.awaitility.core.ThrowingRunnable;
 import org.example.e2etests.tests.base.E2eTestBase;
-import org.example.e2etests.util.JwtTestUtils;
-import org.junit.jupiter.api.AfterEach;
+import org.example.e2etests.config.DataImporterClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
+import static org.example.e2etests.dto.DataImportRequest.DataImportType;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 
 @Slf4j
 public class DataImporterE2eTest extends E2eTestBase {
 
-    private static final String API_PROFILES_IMPORT = "/api/data-importer/start-profiles-import";
-    private static final String API_PROJECTS_IMPORT = "/api/data-importer/start-projects-import";
-    private static final String API_USERS_IMPORT = "/api/data-importer/start-users-import";
-    private static final String API_MENTORS_IMPORT = "/api/data-importer/start-mentors-import";
-    private static final String API_GUARANTEED_REVIEWS_IMPORT = "/api/data-importer/start-guaranteed-reviews-import";
-
     private static final String UPDATE_DESCRIPTION_MENTOR_SQL = "UPDATE " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " SET cost = ? WHERE name = ?";
     private static final String GET_DESCRIPTION_MENTOR_SQL = "SELECT cost FROM " + MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE + " WHERE name = ?";
-    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
             AUTH_SERVICE_USERS_TABLE,
             PROFILE_SERVICE_PROFILES_TABLE,
             PROJECT_SERVICE_PROJECTS_TABLE,
@@ -38,14 +31,12 @@ public class DataImporterE2eTest extends E2eTestBase {
             PROFILE_SERVICE_PROJECT_TABLE
     );
 
-    @BeforeEach
-    void setUp() {
-        truncateTables(TABLE_TO_TRUNCATE);
-    }
+    @Autowired
+    private DataImporterClient importerClient;
 
-    @AfterEach
+    @BeforeEach
     void cleanTables() {
-        truncateTables(TABLE_TO_TRUNCATE);
+        truncateTables(TABLES_TO_TRUNCATE);
     }
 
     @Test
@@ -53,7 +44,7 @@ public class DataImporterE2eTest extends E2eTestBase {
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
         kafkaConsumer.subscribe(List.of(AUTH_USER_CREATED_TOPIC));
 
-        startImport(API_USERS_IMPORT);
+        importerClient.importByType(DataImportType.USERS);
 
         awaitUsersImported();
         assertAuthUserCreatedPublished();
@@ -63,7 +54,7 @@ public class DataImporterE2eTest extends E2eTestBase {
     void shouldImportProfilesAndProjects() {
         assertTableIsEmpty(PROFILE_SERVICE_PROFILES_TABLE);
 
-        startImport(API_PROFILES_IMPORT);
+        importerClient.importByType(DataImportType.PROFILES);
 
         executeWithAwait(60, () ->
                 assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE)
@@ -71,7 +62,7 @@ public class DataImporterE2eTest extends E2eTestBase {
 
         assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
         kafkaConsumer.subscribe(List.of(PROJECTS_PROJECT_CREATED_TOPIC));
-        startImport(API_PROJECTS_IMPORT);
+        importerClient.importByType(DataImportType.PROJECTS);
 
         executeWithAwait(60, () ->
                 assertTableHasRecords(PROJECT_SERVICE_PROJECTS_TABLE)
@@ -90,19 +81,19 @@ public class DataImporterE2eTest extends E2eTestBase {
 
         kafkaConsumer.subscribe(List.of(NOTIFICATIONS_MENTORS_PROJECT_SUBMITTED_TOPIC));
 
-        startImport(API_PROFILES_IMPORT);
+        importerClient.importByType(DataImportType.PROFILES);
         executeWithAwait(60,
                 () -> {
                     assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE);
                 }
         );
 
-        startImport(API_PROJECTS_IMPORT);
+        importerClient.importByType(DataImportType.PROJECTS);
         executeWithAwait(60, () ->
                 assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE)
         );
 
-        startImport(API_MENTORS_IMPORT);
+        importerClient.importByType(DataImportType.MENTORS);
         executeWithAwait(60, () -> {
                     assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE);
                     assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE);
@@ -113,7 +104,7 @@ public class DataImporterE2eTest extends E2eTestBase {
                 }
         );
 
-        startImport(API_GUARANTEED_REVIEWS_IMPORT);
+        importerClient.importByType(DataImportType.GUARANTEED_REVIEWS);
         executeWithAwait(60, () ->
                 assertTableHasRecords(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE)
         );
@@ -134,18 +125,18 @@ public class DataImporterE2eTest extends E2eTestBase {
 
         kafkaConsumer.subscribe(List.of(AUTH_USER_CREATED_TOPIC));
 
-        startImport(API_USERS_IMPORT);
+        importerClient.importByType(DataImportType.USERS);
         awaitUsersImported();
         assertAuthUserCreatedPublished();
 
-        startImport(API_PROFILES_IMPORT);
+        importerClient.importByType(DataImportType.PROFILES);
         awaitProfilesImported();
 
-        startImport(API_MENTORS_IMPORT);
+        importerClient.importByType(DataImportType.MENTORS);
         awaitMentorsImported();
         assertAllMentorsHaveProfiles();
 
-        startImport(API_GUARANTEED_REVIEWS_IMPORT);
+        importerClient.importByType(DataImportType.GUARANTEED_REVIEWS);
         awaitGuaranteedReviewsImported();
     }
 
@@ -154,19 +145,19 @@ public class DataImporterE2eTest extends E2eTestBase {
         assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
         assertTableIsEmpty(MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE);
 
-        startImport(API_PROFILES_IMPORT);
+        importerClient.importByType(DataImportType.PROFILES);
         executeWithAwait(60,
                 () -> {
                     assertTableHasRecords(PROFILE_SERVICE_PROFILES_TABLE);
                 }
         );
 
-        startImport(API_PROJECTS_IMPORT);
+        importerClient.importByType(DataImportType.PROJECTS);
         executeWithAwait(60, () ->
                 assertTableHasRecords(PROFILE_SERVICE_PROJECT_TABLE)
         );
 
-        startImport(API_MENTORS_IMPORT);
+        importerClient.importByType(DataImportType.MENTORS);
         executeWithAwait(120, () -> {
                     assertTableHasRecords(MENTOR_SERVICE_MENTORS_TABLE);
                     assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE);
@@ -190,7 +181,7 @@ public class DataImporterE2eTest extends E2eTestBase {
                 description, testName
         );
 
-        startImport(API_MENTORS_IMPORT);
+        importerClient.importByType(DataImportType.MENTORS);
         executeWithAwait(30, () ->
                 assertTableHasRecords(MENTOR_SERVICE_MENTOR_DESCRIPTIONS_TABLE)
         );
@@ -209,13 +200,6 @@ public class DataImporterE2eTest extends E2eTestBase {
                 .untilAsserted(throwingRunnable);
     }
 
-    private void startImport(String path) {
-        testRestTemplate.postForEntity(
-                path,
-                new HttpEntity<>(createHeaders(JwtTestUtils.getAdminJWT(jwtSecret))),
-                String.class
-        );
-    }
     private void awaitUsersImported() {
         executeWithAwait(60, () -> {
             assertTableHasRecords(AUTH_SERVICE_USERS_TABLE);

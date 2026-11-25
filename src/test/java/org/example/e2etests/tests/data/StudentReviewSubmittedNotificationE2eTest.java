@@ -10,7 +10,6 @@ import org.assertj.core.api.Assertions;
 import org.example.e2etests.dto.*;
 import org.example.e2etests.tests.base.E2eTestBase;
 import org.example.e2etests.util.JwtTestUtils;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
@@ -52,20 +51,14 @@ public class StudentReviewSubmittedNotificationE2eTest extends E2eTestBase {
     void setUp() {
         truncateTables(TABLES_TO_TRUNCATE);
 
+        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
+        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
+        assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
+
         assertKafkaTopicEmpty(List.of(
                 PROJECTS_PROJECT_CREATED_TOPIC,
                 NOTIFICATIONS_STUDENTS_REVIEW_SUBMITTED_TOPIC
         ));
-    }
-
-    @AfterEach
-    void tearDown() {
-        truncateTables(TABLES_TO_TRUNCATE);
-
-        assertTableIsEmpty(PROJECT_SERVICE_REVIEWS_TABLE);
-        assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
-
-        assertTableIsEmpty(BOT_ADAPTER_TELEGRAM_BOT_TASKS_TABLE);
     }
 
     @Test

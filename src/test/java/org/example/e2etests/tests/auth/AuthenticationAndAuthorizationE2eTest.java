@@ -6,7 +6,7 @@ import io.jsonwebtoken.Jwts;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.example.e2etests.tests.base.E2eTestBase;
 import org.example.e2etests.util.JwtTestUtils;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -36,7 +36,7 @@ class AuthenticationAndAuthorizationE2eTest extends E2eTestBase {
             MENTOR_SERVICE_MENTORS_TABLE
     );
 
-    @AfterEach
+    @BeforeEach
     void cleanTestData() {
         truncateTables(TABLES_TO_TRUNCATE);
     }
