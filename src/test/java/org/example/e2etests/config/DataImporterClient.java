@@ -1,10 +1,11 @@
-package org.example.e2etests.util;
+package org.example.e2etests.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.assertj.core.api.Assertions;
 import org.example.e2etests.dto.DataImportRequest;
 import org.example.e2etests.dto.DataImportRequest.DataImportType;
 import org.example.e2etests.tests.base.E2eTestBase;
+import org.example.e2etests.util.JwtTestUtils;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,7 @@ import static org.awaitility.Awaitility.await;
 import static org.example.e2etests.util.HttpHeadersTestUtils.createHeaders;
 
 @Component
-public class DataImportTestUtils extends E2eTestBase {
+public class DataImporterClient extends E2eTestBase {
 
     private static final String API_IMPORT = "/api/data-importer/import";
     private static final String API_IMPORT_STATUS = "/api/data-importer/imports/";
@@ -24,7 +25,7 @@ public class DataImportTestUtils extends E2eTestBase {
     private static final Duration IMPORT_TIMEOUT_TWO_MINUTES = Duration.ofSeconds(120);
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
-    public DataImportTestUtils() {}
+    public DataImporterClient() {}
 
     public void importByType(DataImportType type) {
         long id = startImport(type);
