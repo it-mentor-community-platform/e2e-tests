@@ -2,7 +2,7 @@ package org.example.e2etests.tests.data;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.e2etests.tests.base.E2eTestBase;
-import org.example.e2etests.util.DataImportTestUtils;
+import org.example.e2etests.config.DataImporterClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ public class ReviewImporterE2eTest extends E2eTestBase {
     private static final Duration IMPORT_TIMEOUT_ONE_MINUTE = Duration.ofSeconds(60);
     private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
-    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
             AUTH_SERVICE_USERS_TABLE,
             MENTOR_SERVICE_MENTORS_TABLE,
             MENTOR_SERVICE_GUARANTEED_REVIEWS_PRICES_TABLE,
@@ -34,11 +34,11 @@ public class ReviewImporterE2eTest extends E2eTestBase {
     );
 
     @Autowired
-    private DataImportTestUtils importUtils;
+    private DataImporterClient importerClient;
 
     @BeforeEach
     public void setup() {
-        truncateTables(TABLE_TO_TRUNCATE);
+        truncateTables(TABLES_TO_TRUNCATE);
 
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
         assertTableIsEmpty(MENTOR_SERVICE_MENTORS_TABLE);
@@ -55,11 +55,11 @@ public class ReviewImporterE2eTest extends E2eTestBase {
         Integer beforeCountRowsInTable = JdbcTestUtils.countRowsInTable(jdbcTemplate, PROJECT_SERVICE_REVIEWS_TABLE);
         assertEquals(0, beforeCountRowsInTable);
 
-        importUtils.importByType(DataImportType.USERS);
-        importUtils.importByType(DataImportType.PROFILES);
-        importUtils.importByType(DataImportType.MENTORS);
-        importUtils.importByType(DataImportType.PROJECTS);
-        importUtils.importByType(DataImportType.REVIEWS);
+        importerClient.importByType(DataImportType.USERS);
+        importerClient.importByType(DataImportType.PROFILES);
+        importerClient.importByType(DataImportType.MENTORS);
+        importerClient.importByType(DataImportType.PROJECTS);
+        importerClient.importByType(DataImportType.REVIEWS);
 
         await().atMost(IMPORT_TIMEOUT_ONE_MINUTE).pollInterval(POLL_INTERVAL)
                 .untilAsserted(() ->

@@ -36,7 +36,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
     private static final String MENTOR_TELEGRAM_URL = "https://github.com/zhukovsd-mentor1";
     private static final long MENTOR_ID = 12745679L;
 
-    private static final Set<String> TABLE_TO_TRUNCATE = Set.of(
+    private static final Set<String> TABLES_TO_TRUNCATE = Set.of(
             AUTH_SERVICE_USERS_TABLE,
             PROJECT_SERVICE_PROJECTS_TABLE,
             PROFILE_SERVICE_PROJECT_TABLE,
@@ -48,7 +48,7 @@ public class ProjectSubmittedNotificationE2eTest extends E2eTestBase {
 
     @BeforeEach
     void setUp() {
-        truncateTables(TABLE_TO_TRUNCATE);
+        truncateTables(TABLES_TO_TRUNCATE);
 
         assertTableIsEmpty(AUTH_SERVICE_USERS_TABLE);
         assertTableIsEmpty(PROJECT_SERVICE_PROJECTS_TABLE);
