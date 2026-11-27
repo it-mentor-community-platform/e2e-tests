@@ -43,6 +43,7 @@ public class TestcontainersConfig {
             "auth.user.created",
             "auth.user.authenticated",
             "projects.project.created",
+            "projects.project.updated",
             "notifications.mentors.project.submitted",
             "notifications.students.review.submitted",
             "reviews.review.created"
